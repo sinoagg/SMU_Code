@@ -6,12 +6,12 @@
 #include "prj_typedef.h"
 #include "AD7988_1.h"
 
-#define RANGE_CHANGE_DELAY 100							//delay time between each relay change in ms
+#define RANGE_CHANGE_DELAY 5							//delay time between each relay change in ms
 
 #define RELAY_INPUT_SCALING_1X 0            //放大1倍
 #define RELAY_INPUT_SCALING_6X 1           //放大6倍
 
-#define AUTO_RANGE 0                        //自动换挡模式
+#define RELAY_RANGE_AUTO 0                        //自动换挡模式
 #define RELAY_RANGE_1R 1
 #define RELAY_RANGE_10R 2
 #define RELAY_RANGE_100R 3
@@ -25,7 +25,7 @@
 
 #define DEFAULT_RELAY_INPUT_SCALING RELAY_INPUT_SCALING_6X
 #define DEFAULT_RELAY_TEST_MODE RELAY_TEST_MODE_FIMV
-#define DEFAULT_RELAY_CHANGE_MODE AUTO_RANGE
+#define DEFAULT_RELAY_CHANGE_MODE RELAY_RANGE_AUTO
 #define DEFAULT_RELAY_MAX_RANGE RELAY_RANGE_1G
 #define DEFAULT_RELAY_MIN_RANGE RELAY_RANGE_1R
 #define DEFAULT_RELAY_RANGE RELAY_RANGE_100K
@@ -36,10 +36,13 @@ typedef struct
 	uint8_t rangeMode;								//自动或手动换挡：0为自动换挡，1-10为手动换挡的档位值
 	uint8_t	maxRange;									//最大挡位
 	uint8_t minRange;									//最小挡位
+	uint8_t tempMaxRange;							//临时最大挡位，用于换挡判断使用
+	uint8_t tempMinRange;							//临时最小挡位，用于换挡判断使用
 	uint8_t rangeNow;									//目前所用挡位
-	uint8_t originState;              //原始档位计数
-	uint8_t originRange;              //原始档位
-	uint8_t rangeChangeSatus;         //换挡结束标志，0为继续，1为结束
+	uint8_t outputConnect;						//输出连接继电器
+	uint8_t rangeChangeTimes;					//自动换挡次数
+	uint8_t DUT_VoltageScale;					//电压放大X倍
+	uint8_t DUT_CurrentScale;					//电流放大X倍，但本实验基本不用
 }Relay_TypeDef;
 
 typedef struct
@@ -51,11 +54,12 @@ typedef struct
 extern Relay_TypeDef Relay;
 
 void RelayClear(void);
-void SetRelay(uint8_t range_select);
+void SetRangeRelay(uint8_t range_select);
 void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay);
 uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Relay_TypeDef* pRelay);
-void RelaySetInputScaling(enum TestMode testMode, uint8_t scale);
+void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay);
 void RelaySetTestMode(enum TestMode testmode);
+void RelaySetInputScaling(enum TestMode testMode, uint8_t scale);
 void ConnectOutput(void);											//输出继电器连接
 void DisconnectOutput(void);									//输出继电器断开
 

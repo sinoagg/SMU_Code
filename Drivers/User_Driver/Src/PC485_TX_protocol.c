@@ -7,7 +7,7 @@ void prepareTxData(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult,
 {
 	uint8_t xorCheck=0;
 	*pUartTxBuf=DEV_ADDR;
-	*(pUartTxBuf+1)=0x00;
+	*(pUartTxBuf+1)=pTestResult->endOfTest;
 	*(pUartTxBuf+2)=(uint8_t)((pTestPara->V_Now)>>8);
 	*(pUartTxBuf+3)=(uint8_t)((pTestPara->V_Now)&0xFF);
 	*(pUartTxBuf+4)=(uint8_t)((pTestPara->I_Now)>>8);

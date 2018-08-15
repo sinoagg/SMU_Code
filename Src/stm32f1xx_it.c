@@ -36,18 +36,22 @@
 #include "stm32f1xx_it.h"
 
 /* USER CODE BEGIN 0 */
-extern uint8_t UART2_RxBuf[17];
-
-uint16_t uart2RxCounter=0;
+extern uint8_t RxComplete;
+extern uint8_t TxComplete;
+//extern uint8_t UART2_RxBuf[17];
+//uint16_t uart2RxCounter=0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
+extern DMA_HandleTypeDef hdma_usart2_rx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
 
 /******************************************************************************/
 /*            Cortex-M3 Processor Interruption and Exception Handlers         */ 
@@ -190,6 +194,18 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f1xx.s).                    */
 /******************************************************************************/
+/**
+* @brief This function handles DMA1 channel3 global interrupt.
+*/
+//void DMA1_Channel6_IRQHandler(void)
+//{
+//	HAL_DMA_IRQHandler(&hdma_usart2_rx);
+//}
+
+//void DMA1_Channel7_IRQHandler(void)
+//{
+//  HAL_DMA_IRQHandler(&hdma_usart2_tx);
+//}
 
 /**
 * @brief This function handles USB low priority or CAN RX0 interrupts.
@@ -234,6 +250,20 @@ void TIM3_IRQHandler(void)
 }
 
 /**
+* @brief This function handles TIM4 global interrupt.
+*/
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+
+  /* USER CODE END TIM4_IRQn 0 */
+	HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
 * @brief This function handles USART1 global interrupt.
 */
 void USART1_IRQHandler(void)
@@ -252,13 +282,48 @@ void USART1_IRQHandler(void)
 */
 void USART2_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART2_IRQn 0 */
+	uint32_t temp;
+	uint32_t tmp_flag = 0, tmp_it_source = 0;
+	tmp_flag = __HAL_UART_GET_FLAG(&huart2,UART_FLAG_TC);					//读取发送完成中断标志位
+	tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart2, UART_IT_TC);
+	if((tmp_flag != RESET) && (tmp_it_source != RESET))	
+	{
+		__HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TC);
+		/* Check if a transmit process is ongoing or not */
+		if(huart2.gState == HAL_UART_STATE_BUSY_TX_RX) 
+		{
+			huart2.gState = HAL_UART_STATE_BUSY_RX;
+		}
+		else
+		{
+			huart2.gState = HAL_UART_STATE_READY;
+		}
+		TxComplete=1;
+	}
+	
+	tmp_flag = __HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE);
+  tmp_it_source = __HAL_UART_GET_IT_SOURCE(&huart2, UART_IT_IDLE);
+	if((tmp_flag != RESET) && (tmp_it_source != RESET))
+  { 
+		__HAL_UART_CLEAR_IDLEFLAG(&huart2);//清IDLE中断标志位，此处执行的实际上是CLEAR PEFLAG，读SR和DR的方式可以清除多种flag
+		__HAL_UART_DISABLE_IT(&huart2, UART_IT_RXNE);
+		/* Check if a transmit process is ongoing or not */
+		if(huart2.RxState == HAL_UART_STATE_BUSY_TX_RX) 
+		{
+			huart2.RxState = HAL_UART_STATE_BUSY_TX;
+		}
+		else
+		{
+			huart2.RxState = HAL_UART_STATE_READY;
+		}
+		HAL_UART_DMAStop(&huart2);
+		//temp  = hdma_usart2_rx.Instance->CNDTR;             
+		//rx_len =  BUFFER_SIZE - temp;                            
+		RxComplete=1;
+	 }
+	/* USER CODE BEGIN USART1_IRQn 1 */
 
-  /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
-  /* USER CODE BEGIN USART2_IRQn 1 */
-	//USER_Uart2IRQHandler();
-  /* USER CODE END USART2_IRQn 1 */
+  /* USER CODE END USART1_IRQn 1 */
 }
 
 /**
@@ -276,33 +341,5 @@ void USART3_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-//void USER_Uart2IRQHandler(void)
-//{
-//	
-//	if((__HAL_UART_GET_FLAG(&huart2,UART_FLAG_RXNE)!=RESET))
-//	{
-//			if(huart2.RxState==HAL_UART_STATE_READY)   //接收到一帧中的第一个字节
-//			{
-//				  huart2.RxState=HAL_UART_STATE_BUSY_RX;
-//				  __HAL_UART_ENABLE_IT(&huart2,UART_IT_IDLE);   //使能串口2空闲中断
-//				  uart2RxCounter=0;                         //计数清零
-//				  UART2_RxBuf[uart2RxCounter]=(uint8_t)(huart2.Instance->DR & (uint8_t)0x00FF);
-//				  uart2RxCounter++;
-//			}
-//			else if(huart2.RxState==HAL_UART_STATE_BUSY_RX)  
-//			{
-//				  UART2_RxBuf[uart2RxCounter]=(uint8_t)(huart2.Instance->DR & (uint8_t)0x00FF);
-//				  uart2RxCounter++;
-//			}
-//			__HAL_UART_CLEAR_FLAG(&huart2,UART_FLAG_RXNE);
-//		  
-//	}
-//	if((__HAL_UART_GET_FLAG(&huart2,UART_FLAG_IDLE)!=RESET))  //进入空闲中断
-//	{          
-//		  __HAL_UART_DISABLE_IT(&huart2,UART_IT_IDLE);    //关闭空闲中断
-//		  __HAL_UART_DISABLE_IT(&huart2,UART_IT_RXNE);    //关闭接收中断
-//		  huart2.RxState=HAL_UART_STATE_RESET;            //一帧数据接收完
-//	}
-//}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

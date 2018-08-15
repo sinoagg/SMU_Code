@@ -6,6 +6,8 @@ void SetTimerPara(TestPara_TypeDef* pTestPara)
 	HAL_TIM_Base_Stop_IT(&htim3);    										//关闭DAC输出中断
 	MX_TIM2_Init(10000/pTestPara->sampleRate);					//ADC采集定时器，单位100us
 	HAL_TIM_Base_Stop_IT(&htim2);     									//关闭ADC采集
+	MX_TIM4_Init();																		  //固定100ms中断一次
+	HAL_TIM_Base_Stop_IT(&htim4); 
 }
 
 void SetTimerAction(TestPara_TypeDef* pTestPara)
@@ -26,23 +28,15 @@ static void ChangeTimer(TestPara_TypeDef* pTestPara, uint8_t TIM_ONOFF)
 {
 	if(TIM_ONOFF == TIM_ON)
 	{
-		if(pTestPara->testMode==MODE_FIMV_NO_SWEEP||pTestPara->testMode==MODE_FVMI_NO_SWEEP)
-		{
-			HAL_TIM_Base_Start_IT(&htim3);								//DAC输出数据中断启动	
-			HAL_Delay(2);																	//DAC输出之后固定等待2ms再开启采集
-			HAL_TIM_Base_Start_IT(&htim2);								//ADC采集数据并回传中断启动
-		}
-		else if(pTestPara->testMode==MODE_FIMV_SWEEP||pTestPara->testMode==MODE_FVMI_SWEEP)
-		{
-			HAL_TIM_Base_Start_IT(&htim3);								//DAC输出数据中断启动	
-			HAL_Delay(2);																	//DAC输出之后固定等待2ms再开启采集
-			HAL_TIM_Base_Start_IT(&htim2);								//ADC采集数据并回传中断启动
-		}
+		//HAL_TIM_Base_Start_IT(&htim3);								//在timer4定时器中断里启动Tim3	
+		HAL_TIM_Base_Start_IT(&htim4);								//启动QuietTime定时器
+		HAL_TIM_Base_Start_IT(&htim2);								//ADC采集数据并回传中断启动
 	}
 	else
 	{
-		HAL_TIM_Base_Stop_IT(&htim3);										//DAC输出数据中断启动	
-		HAL_TIM_Base_Stop_IT(&htim2);										//ADC采集数据并回传中断停止	
+		HAL_TIM_Base_Stop_IT(&htim3);									//采样中断停止
+		HAL_TIM_Base_Stop_IT(&htim2);									//ADC采集数据并回传中断停止
+		HAL_TIM_Base_Stop_IT(&htim4);	
 	}
 }
 

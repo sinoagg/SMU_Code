@@ -1,15 +1,22 @@
 #include "relay.h"
+#include "hardware.h"
 
 Relay_TypeDef Relay;
 
 void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 {
-	pRelay->maxRange=9;
-	pRelay->minRange=1;
-	pRelay->rangeNow=pRelay->rangeMode;
+	if(pRelay->rangeMode==RELAY_RANGE_AUTO)
+		pRelay->rangeNow=RELAY_RANGE_1G;
+	else 
+		pRelay->rangeNow=pRelay->rangeMode;
+	pRelay->tempMaxRange=pRelay->maxRange;
+	pRelay->tempMinRange=pRelay->minRange;
 	RelaySetTestMode(pTestPara->testMode);
-	SetRelay(pRelay->rangeNow);
+	SetRangeRelay(pRelay->rangeNow);
+	if(pRelay->outputConnect) ConnectOutput();
+	else DisconnectOutput();
 }	
+
 void RelaySetInputScaling(enum TestMode testMode, uint8_t scale) //ÉèÖÃ·´À¡µçÑ¹·Å´ó±¶Êý
 {
 	if(testMode==MODE_FVMI_SWEEP||testMode==MODE_FVMI_NO_SWEEP)
@@ -74,7 +81,7 @@ void RelayClear(void)   //³õÊ¼»¯10¸ö¼ÌµçÆ÷¿ØÖÆ¶Ë
 	HAL_GPIO_WritePin(Ctrl10_GPIO_Port, Ctrl10_Pin , GPIO_PIN_RESET); 
 }
 
-void SetRelay(uint8_t rangeSelect)                                   //FVMIÉèÖÃ²É¼¯µçÑ¹·Å´ó·¶Î§£¬FIMVÉèÖÃµçÁ÷µµÎ»
+void SetRangeRelay(uint8_t rangeSelect)                                   //FVMIÉèÖÃ²É¼¯µçÑ¹·Å´ó·¶Î§£¬FIMVÉèÖÃµçÁ÷µµÎ»
 {
 	RelayClear();
 	switch(rangeSelect)
@@ -120,17 +127,27 @@ void SetRelay(uint8_t rangeSelect)                                   //FVMIÉèÖÃ²
 /******************************************************************/
 uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Relay_TypeDef* pRelay)
 {
-	if(Relay.rangeMode!=AUTO_RANGE)
+	if(Relay.rangeMode!=RELAY_RANGE_AUTO)
 		return 0;
 	else
 	{
 		if(testMode==MODE_FVMI_NO_SWEEP||testMode==MODE_FVMI_SWEEP) 				//Èç¹ûÎªFVMI×Ô¶¯»»µ²Ä£Ê½		
 		{	
+			if((pRelay->rangeChangeTimes>9) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//Èç¹û»»µ²´ÎÊý¶àÓÚ9´Î,½«×î´óµ²Î»×Ô¶¯½µµÍÒ»µµ
+			{
+				pRelay->tempMaxRange--;
+				pRelay->rangeNow=pRelay->tempMaxRange;
+				SetRangeRelay(--pRelay->rangeNow);
+				HAL_Delay(RANGE_CHANGE_DELAY);
+				return 1;
+			}
 			if((pTestResult->I_sample>0xE666)||(pTestResult->I_sample<0x2000))				//Èç¹û²É¼¯µ½µÄµçÁ÷Öµ¹ý´ó
 			{
-				if(pRelay->rangeNow>pRelay->minRange)														//Èç¹ûµµÎ»ÔÚ1µµÒÔÉÏ£¬ÈÔÈ»¿ÉÒÔ½µµµ
+				if(pRelay->rangeNow>pRelay->tempMinRange)														//Èç¹ûµµÎ»ÔÚ1µµÒÔÉÏ£¬ÈÔÈ»¿ÉÒÔ½µµµ
 				{		
-					SetRelay(--(pRelay->rangeNow));
+					HAL_TIM_Base_Stop_IT(&htim2);
+					SetRangeRelay(--(pRelay->rangeNow));
+					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;
 				}
@@ -139,9 +156,10 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			}
 			else if((pTestResult->I_sample<0x8200)&&(pTestResult->I_sample>0x7DFF))			//Èç¹û²É¼¯µ½µÄµçÁ÷¹ýÐ¡
 			{
-				if(pRelay->rangeNow<pRelay->maxRange)	                      //Èç¹ûµµÎ»ÔÚ×î´óµµÒÔÏÂ£¬ÈÔÈ»¿ÉÒÔÉýµµ
+				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //Èç¹ûµµÎ»ÔÚ×î´óµµÒÔÏÂ£¬ÈÔÈ»¿ÉÒÔÉýµµ
 				{
-					SetRelay(++(pRelay->rangeNow));
+					SetRangeRelay(++(pRelay->rangeNow));
+					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;
 				}

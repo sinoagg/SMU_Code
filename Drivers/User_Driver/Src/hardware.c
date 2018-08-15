@@ -3,10 +3,13 @@
 
 TIM_HandleTypeDef htim2;				     //handle of timer 2
 TIM_HandleTypeDef htim3;				     //handle of timer 3
+TIM_HandleTypeDef htim4;						//handle of timer 4
 
 UART_HandleTypeDef huart1;			     //handle of uart 1
 UART_HandleTypeDef huart2;			     //handle of uart 2
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart2_tx;
 
 AD5689R_HandleTypeDef hAD5689R1;	   //handle of DAC 1
 
@@ -22,10 +25,15 @@ void Hardware_Init(void)
   SystemClock_Config();
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART1_UART_Init();               	//预备接口485
+	MX_DMA_Init();
 	MX_USART2_UART_Init();               	//和上位机软件通信传递采集的值
-  MX_USART3_UART_Init();               	//触摸屏幕通信
-
+  HAL_GPIO_WritePin(RS485_RE_GPIO_Port, RS485_RE_Pin, GPIO_PIN_RESET);					//使RS485处在接收状态
+	HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);              
+	__HAL_UART_ENABLE_IT(&huart2, UART_IT_TC);//需要串口1产生发送完成中断
+	__HAL_UART_DISABLE_IT(&huart2, UART_IT_TXE);//不让串口1产生发送缓存空中断
+	__HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);//需要串口1产生空闲中断
+	__HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TC);
+	__HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TXE);
   /* USER CODE BEGIN 2 */
 	Delay_Init(72);										    //微秒延时初始化，主频72M
 	AD5689R_Init(&hAD5689R1,0);				    //DAC1初始化		
@@ -33,10 +41,9 @@ void Hardware_Init(void)
 	AD7988_1_Init(&hAD7988_1_2,1);        //ADC2 for voltage measure 初始化
 	ADC_VoltageScaling(SCALE1X);
 	ADC_CurrentScaling(SCALE1X);
+	
 	HAL_GPIO_WritePin(LED0_GPIO_Port, LED0_Pin, GPIO_PIN_SET);			       //指令状态指示灯关闭
 	HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);			       //采集状态指示灯关闭
-	HAL_GPIO_WritePin(RS485_RE_GPIO_Port, RS485_RE_Pin, GPIO_PIN_RESET);	 //使RS485处在接收状态
-	HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);
 }
 
 /** System Clock Configuration
@@ -131,10 +138,10 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, DAC1_SCLK_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOC, LED0_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOC, LED0_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
 
   GPIO_InitStruct.Pin = Ctrl1_Pin|Ctrl2_Pin|Ctrl3_Pin|Ctrl4_Pin 
                           |Ctrl5_Pin|Ctrl6_Pin|ADC1_CNV_Pin|RS485_RE2_Pin 
@@ -246,6 +253,53 @@ void MX_TIM3_Init(uint16_t time_step)			// Uint: ms 分辨率0.1ms
   }
 }
 
+/* TIM4 init function */									//QuietTime定时器
+void MX_TIM4_Init(void)										// unit:ms 分辨率0.1ms
+{
+  TIM_ClockConfigTypeDef sClockSourceConfig;
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 7200-1;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 1000-1;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim4, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+}
+
+
+/** 
+  * Enable DMA controller clock
+  */
+void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel5&4_IRQn interrupt configuration */
+	//HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);   //DMA只负责接收数据，不需要用它来产生中断，中断由串口空闲产生
+  //HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
+  //HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);//由串口TC产生中断，DMA即使TC中断，数据也并没有完全发出去，串口TC才是最终标准
+  //HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
+}
 /* USART1 init function */
 void MX_USART1_UART_Init(void)
 {
@@ -283,7 +337,6 @@ void MX_USART2_UART_Init(void)
 /* USART3 init function */
 void MX_USART3_UART_Init(void)
 {
-
   huart3.Instance = USART3;
   huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;

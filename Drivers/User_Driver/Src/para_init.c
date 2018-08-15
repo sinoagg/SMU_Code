@@ -90,18 +90,19 @@ void GetTestPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay, uint8_t* pU
 		pTestPara->timeStep=(uint16_t)*(pUartRxBuf+18)<<8|*(pUartRxBuf+19);
 		pTestPara->sampleRate=(uint16_t)*(pUartRxBuf+22)<<8|*(pUartRxBuf+23);
 		pTestPara->avgNumber=(uint16_t)*(pUartRxBuf+24)<<8|*(pUartRxBuf+25);
-		pTestPara->quietTime=(uint16_t)*(pUartRxBuf+16)<<8|*(pUartRxBuf+17);					
+		pTestPara->quietTime=(uint16_t)*(pUartRxBuf+16)<<8|*(pUartRxBuf+17);
+		pTestPara->quietTime/=100;		
 		pTestPara->I_Start=(uint16_t)*(pUartRxBuf+10)<<8|*(pUartRxBuf+11);
 		pTestPara->I_End=(uint16_t)*(pUartRxBuf+12)<<8|*(pUartRxBuf+13);
-		pTestPara->I_Now=pTestPara->I_Start;
 		pTestPara->V_Start=(uint16_t)*(pUartRxBuf+4)<<8|*(pUartRxBuf+5);
 		pTestPara->V_End=(uint16_t)*(pUartRxBuf+6)<<8|*(pUartRxBuf+7);
-		pTestPara->V_Now=pTestPara->V_Start;
 		pTestPara->V_Step=(uint16_t)*(pUartRxBuf+8)<<8|*(pUartRxBuf+9);
 		pTestPara->I_Step=(uint16_t)*(pUartRxBuf+14)<<8|*(pUartRxBuf+15);
 
 		pTestPara->startDelay=pTestPara->timeStep - 1000*pTestPara->avgNumber/pTestPara->sampleRate-10;			//给计算传输留出10ms空闲
 		if(pTestPara->startDelay<0) pTestPara->startDelay=0;
+		pTestPara->I_Now=pTestPara->I_Start;
+		pTestPara->V_Now=pTestPara->V_Start;
 		
 		pRelay->rangeMode=*(pUartRxBuf+26);
 		pRelay->maxRange=*(pUartRxBuf+27);

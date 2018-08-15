@@ -34,9 +34,12 @@ enum MsgType msgType=MSG_TYPE_NULL;
 enum ADC_Status ADC_status=ADC_BUSY;                      	//ADC²É¼¯×´Ì¬
 TestPara_TypeDef TestPara;                                	//²âÁ¿²ÎÊı´æÈ¡
 TestResult_TypeDef TestResult;                            	//²âÁ¿½á¹û´æÈ¡														
-uint8_t Uart2RxBuf[32]={0};                              		//½ÓÊÕPC¶ËµÄÉèÖÃÃüÁîºÍĞĞ¶¯ÃüÁî
-uint8_t Uart2TxBuf[128]={0};                              	//ÏòPC·¢ËÍ²É¼¯µ½µÄÊı¾İ
-
+uint8_t Uart2RxBuf[512]={0};                              		//½ÓÊÕPC¶ËµÄÉèÖÃÃüÁîºÍĞĞ¶¯ÃüÁî
+uint8_t Uart2TxBuf[512]={0};                              	//ÏòPC·¢ËÍ²É¼¯µ½µÄÊı¾İ
+uint8_t RxComplete=0;
+uint8_t TxComplete=0;
+int16_t quietTimeTick=0;                      													//ADC²É¼¯×´Ì¬
+uint8_t firstDataReady=0;										//µÚÒ»¸öÊı¾İ¾ÍÎ»£¬Ö»ÓĞµÚÒ»¸öÊı¾İ¾ÍÎ»ºóÉ¨ÃèµçÑ¹²ÅÄÜÔö¼Ó£¬·ñÔò³öÏÖÉ¨ÃèµçÑ¹Ìø¹ıµÚÒ»¸öµãµÄÇé¿ö
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -53,29 +56,18 @@ uint8_t Uart2TxBuf[128]={0};                              	//ÏòPC·¢ËÍ²É¼¯µ½µÄÊı¾
 
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* USER CODE BEGIN 2 */
+	uint8_t resultNum=0;
 	Hardware_Init();
 	//Get adjustment data
 	InitTestPara(&TestPara);
-	uint8_t resultNum=0;
 	#ifdef UNDER_DEBUG
 		ConnectOutput();
-		SetRelay(9);
+		SetRangeRelay(9);
 	#endif
-  /* USER CODE END 2 */
-
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-  /* USER CODE END WHILE */
-		
-  /* USER CODE BEGIN 3 */	
+	HAL_UART_Receive_DMA(&huart2, Uart2RxBuf, UART_RX_LEN);
+	
+	while (1)
+  {	
 		if(msgType!=MSG_TYPE_NULL)																			//Èç¹ûÉè±¸ÊÕµ½ĞÂµÄÃüÁî
 		{
 			//HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);									//Ö¸Ê¾µÆÉÁË¸
@@ -86,15 +78,15 @@ int main(void)
 					SetTimerPara(&TestPara);																	//ÉèÖÃ¶¨Ê±Æ÷²ÎÊıºÍÑ¡¶¨´óĞ¡µµÎ»
 					GetRelayPara(&TestPara, &Relay);													//ÉèÖÃ²âÁ¿Ä£Ê½Á¿³ÌºÍ·Å´ó¼ÌµçÆ÷
 					//´Ë´¦ÏÈ²âÊÔµçÑ¹Öµ£¬ºó²âÊÔµçÁ÷Öµ
-					OutputVoltage(TestPara.testMode, TestPara.V_Now);
+					OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
 			}
 			else if(msgType==MSG_TYPE_RUN)                            //Èç¹ûÊÇĞĞ¶¯ÃüÁî
 			{
 				TestPara.testCmd=CMD_START;
+				TestResult.endOfTest=0;
 				resultNum=0;
-				ConnectOutput();
-				//HAL_Delay(pTestPara->quietTime);										//µÈ´ı¾²Ä¬Ê±¼ä
-				//Test_Relay();																			  //¼È³äµ±ÑÓÊ±ÓÖ²âÊÔµµÎ»£¬Ä¿Ç°Ö»ÊÇ²âÊÔADCÖµ
+				firstDataReady=0;
+				ConnectOutput();																			  //¼È³äµ±ÑÓÊ±ÓÖ²âÊÔµµÎ»£¬Ä¿Ç°Ö»ÊÇ²âÊÔADCÖµ
 				SetTimerAction(&TestPara);	                					//¶¨Ê±Æ÷¶¯×÷							
 			}
 			else if(msgType==MSG_TYPE_STOP)													//Èç¹ûÊÇÍ£Ö¹ÃüÁî
@@ -106,14 +98,12 @@ int main(void)
 			}
 			else if(msgType==MSG_TYPE_QUERY)												//Èç¹ûÊÇ²éÑ¯ÃüÁî
 			{
-					if(resultNum>0&&TestPara.testStatus==ON)
+					if(resultNum>0)
 					{
 						Uart2TxBuf[0]=DEV_ADDR;                        												//Éè±¸µØÖ·
-						HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);		//Ê¹ÄÜ·¢ËÍ
-						HAL_UART_Transmit(&huart2, Uart2TxBuf, resultNum*UART_TX_LEN, 1000);	//·¢ËÍËùÓĞ²âÁ¿Öµ
+						HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);	//Ê¹ÄÜ·¢ËÍ
+						HAL_UART_Transmit_DMA(&huart2, Uart2TxBuf, resultNum*UART_TX_LEN);		//·¢ËÍËùÓĞ²âÁ¿Öµ
 						resultNum=0;																													//ËùÓĞ½á¹ûÒÑ·¢ËÍ£¬¹éÁã
-						delay_us(10);
-						HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);	//Ê¹ÄÜ485½ÓÊÕ
 					}
 			}
 			else if(msgType==MSG_TYPE_REPORT_ID)
@@ -128,36 +118,137 @@ int main(void)
 			}
 			msgType=MSG_TYPE_NULL;																				//Çå¿ÕÏûÏ¢
 		}
-		HAL_UART_Receive_IT(&huart2,Uart2RxBuf,UART_RX_LEN);	              //³ÖĞø½ÓÊÕ´®¿Ú1 RS485Êı¾İ
 		
-		if(ADC_status==ADC_READY)																							//Èç¹û¶ÁÈ¡1´ÎADC¹ı³ÌÍê³É
+
+		if(TxComplete==1)
+		{
+			TxComplete=0;
+			//HAL_Delay(2);			//ËäÈ»µ¥Æ¬»ú·¢ÍêÁË£¬µ«ÊÇ485Ğ¾Æ¬²¢Ã»ÓĞ·¢Íê
+			HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);	//Ê¹ÄÜ485½ÓÊÕ
+		}
+		if(RxComplete==1)
+		{
+			HAL_UART_Receive_DMA(&huart2, Uart2RxBuf, UART_RX_LEN+1);
+			RxComplete=0;
+			if(Uart2RxBuf[0]==DEV_ADDR||Uart2RxBuf[0]==0x00)			//Èç¹ûÊÇÉè±¸µØÖ·»òÕßÊÇ¹ã²¥µØÖ·
+			{
+				uint8_t xorCheck=0;
+				for(uint8_t j=0;j<UART_RX_LEN-1;j++)                //½«½ÓÊÕµ½µÄÊı¾İ°´ÕÕĞ­Òé½øĞĞĞ£Ñé
+				{
+					xorCheck^=Uart2RxBuf[j];
+				}
+				if(xorCheck==Uart2RxBuf[UART_RX_LEN-1])
+				{
+						msgType=(enum MsgType)Uart2RxBuf[1];
+				}
+			}
+		}
+		
+		if(ADC_status==ADC_READY)																		//Èç¹û¶ÁÈ¡1´ÎADC¹ı³ÌÍê³É
 		{
 			ADC_status=ADC_BUSY;
-			if(RelayCheck(TestPara.testMode, &TestResult, &Relay)==0)//Èç¹ûµµÎ»ÕıÈ·
+			if(RelayCheck(TestPara.testMode, &TestResult, &Relay)==0)	//Èç¹ûµµÎ»ÕıÈ·
 		  {
-				if(Do_Calculation(&TestPara, &TestResult, &Relay)==0)	//µÃµ½Ò»´ÎÆ½¾ù½á¹û
+				if(Do_Calculation(&TestPara, &TestResult, &Relay)==0)		//µÃµ½Ò»´ÎÆ½¾ù½á¹û
 				{
 					//HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);                                     //ADC×´Ì¬Ö¸Ê¾µÆ
-					if(resultNum<5)
+					Relay.rangeChangeTimes=0;
+					//TestResult.I_avg.numFloat=Commit_Adjustment(TestResult.I_avg.numFloat, &Relay);	//¶Ô²É¼¯µ½µÄµçÁ÷½øĞĞÊı¾İ´¦Àí
+					if(quietTimeTick==-1 && resultNum<10)
 					{
 						prepareTxData(&TestPara, &TestResult, Uart2TxBuf+resultNum*UART_TX_LEN);
 						resultNum++;
+						firstDataReady=1;
 					}
 					InitTestResult(&TestResult);
 				}
 			}
 			else
+			{
+				ADC_status=ADC_BUSY;
 				InitTestResult(&TestResult);											//»»µ²ĞèÒªÇå¿Õ²âÁ¿½á¹û
+				HAL_TIM_Base_Start_IT(&htim2);
+			}
 		}
 	}
   /* USER CODE END 3 */
 
 }
 /* USER CODE BEGIN 4 */
-//void UartTx()
-//{
+void EnterEndofTest(void)
+{
+	HAL_TIM_Base_Stop_IT(&htim3);																		//DACÊä³öÊı¾İÖĞ¶Ï¹Ø±Õ		
+	HAL_TIM_Base_Stop_IT(&htim2);	
+	TestPara.testStatus=OFF;
+	//ClearAllVoltage();			Disconnect();																				//Êä³öµçÑ¹ÇåÁã
+}
+
+void StartNextSampling(void)
+{
+	HAL_TIM_Base_Start_IT(&htim2);
+}
+
+void OutputNextVoltage(void)		
+{
+	if(TestPara.V_Start<=TestPara.V_End) 
+	{						
+		if(firstDataReady==1)			//Ö»ÓĞ¹ıÁË¾²Ä¬Ê±¼ä²ÅÄÜÔö¼Ó²¢ÇÒµÚÒ»¸öÊı¾İ¾ÍÎ»
+			TestPara.V_Now+=abs(TestPara.V_Step); //ÉèÖÃĞÂµÄÂ©¼«µçÑ¹
+		if(TestPara.V_Now>TestPara.V_End) EnterEndofTest();
+		else
+		{
+			OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
+			delay_us(2);
+			HAL_TIM_Base_Start_IT(&htim2);															//Êä³öÒ»´Î²Å¿ªÊ¼AD²É¼¯µÄÖĞ¶Ï
+		}
 	
-//}
+		if(TestPara.V_Now+abs(TestPara.V_Step)>TestPara.V_End) TestResult.endOfTest=1;
+	}
+	else
+	{
+			if(firstDataReady==1)
+				TestPara.V_Now-=abs(TestPara.V_Step); //ÉèÖÃĞÂµÄÂ©¼«µçÑ¹
+			if(TestPara.V_Now<TestPara.V_End)	EnterEndofTest();
+			else
+			{
+				OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);	
+				delay_us(2);
+				HAL_TIM_Base_Start_IT(&htim2);															//Êä³öÒ»´Î²Å¿ªÊ¼AD²É¼¯µÄÖĞ¶Ï
+			}
+		if(TestPara.V_Now-abs(TestPara.V_Step)<TestPara.V_End) TestResult.endOfTest=1;																											
+	}
+}
+
+void OutputNextCurrent(void)		
+{
+	if(TestPara.I_Start<=TestPara.I_End) 
+	{						
+		if(firstDataReady==1)			//Ö»ÓĞ¹ıÁË¾²Ä¬Ê±¼ä²ÅÄÜÔö¼Ó²¢ÇÒµÚÒ»¸öÊı¾İ¾ÍÎ»
+			TestPara.I_Now+=abs(TestPara.I_Step); //ÉèÖÃĞÂµÄÂ©¼«µçÑ¹
+		if(TestPara.I_Now>TestPara.I_End) EnterEndofTest();
+		else
+		{
+			OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);
+			delay_us(2);
+			HAL_TIM_Base_Start_IT(&htim2);															//Êä³öÒ»´Î²Å¿ªÊ¼AD²É¼¯µÄÖĞ¶Ï
+		}
+	
+		if(TestPara.I_Now+abs(TestPara.I_Step)>TestPara.I_End) TestResult.endOfTest=1;
+	}
+	else
+	{
+			if(firstDataReady==1)
+				TestPara.I_Now-=abs(TestPara.I_Step); //ÉèÖÃĞÂµÄÂ©¼«µçÑ¹
+			if(TestPara.I_Now<TestPara.I_End)	EnterEndofTest();
+			else
+			{
+				OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);	
+				delay_us(2);
+				HAL_TIM_Base_Start_IT(&htim2);															//Êä³öÒ»´Î²Å¿ªÊ¼AD²É¼¯µÄÖĞ¶Ï
+			}
+		if(TestPara.I_Now-abs(TestPara.I_Step)<TestPara.I_End) TestResult.endOfTest=1;																											
+	}
+}
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @param  htim: TIM handle
@@ -176,43 +267,31 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		{
 			if(TestPara.testMode==MODE_FVMI_SWEEP)
 			{
-				//TestPara.V_Now+=TestPara.V_Step;
-				//OutputVoltage(TestPara.testMode, TestPara.V_Now);
+				OutputNextVoltage();
 			}
 			else if(TestPara.testMode==MODE_FIMV_SWEEP)
 			{
-				//OutputCurrent(TestPara.testMode, TestPara.I_Now);
+				OutputNextCurrent();
 			}
-			HAL_TIM_Base_Start_IT(&htim2);															//Êä³öÒ»´Î²Å¿ªÊ¼AD²É¼¯µÄÖĞ¶Ï
-			//HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);                     //ADC×´Ì¬Ö¸Ê¾µÆ
+			else if(TestPara.testMode==MODE_FVMI_NO_SWEEP||TestPara.testMode==MODE_FIMV_NO_SWEEP)
+			{
+				StartNextSampling();
+			}
+		}
+		else if (htim->Instance == htim4.Instance)		//DAC¶¨Ê±Æ÷
+		{
+				quietTimeTick++;
+				if(quietTimeTick>=TestPara.quietTime)
+				{
+					quietTimeTick=-1;	//ÒÑ¾­µ½´ïquietTime¼ÆÊıÊ±¼ä
+					HAL_TIM_Base_Stop_IT(&htim4);
+					ADC_status=ADC_BUSY;
+					InitTestResult(&TestResult);
+					HAL_TIM_Base_Start_IT(&htim3);			//¿ªÊ¼É¨Ãè
+				}
 		}
 }
 
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)  
-{
-	if(huart->Instance == huart2.Instance)													//485½Ó¿ÚÊÕµ½Ö¸Áî
-	{
-		if(Uart2RxBuf[0]==DEV_ADDR||Uart2RxBuf[0]==0x00)			//Èç¹ûÊÇÉè±¸µØÖ·»òÕßÊÇ¹ã²¥µØÖ·
-		{
-			uint8_t xorCheck=0;
-			for(uint8_t j=0;j<UART_RX_LEN-1;j++)                //½«½ÓÊÕµ½µÄÊı¾İ°´ÕÕĞ­Òé½øĞĞĞ£Ñé
-			{
-				xorCheck^=Uart2RxBuf[j];
-			}
-			if(xorCheck==Uart2RxBuf[UART_RX_LEN-1])
-			{
-					msgType=(enum MsgType)Uart2RxBuf[1];
-		  }
-	  }
-	}	
-}
-
-/* USER CODE END 4 */
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @param  None
-  * @retval None
-  */
 /**
   * @brief  This function is executed in case of error occurrence.
   * @param  None

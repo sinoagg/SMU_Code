@@ -88,6 +88,7 @@ typedef struct
 	uint32_t V_sum;		
 	FloatUnion V_avg;	
 	uint32_t sampleCount;
+	uint8_t endOfTest;
 }TestResult_TypeDef;
 
 enum SamplingStatus
