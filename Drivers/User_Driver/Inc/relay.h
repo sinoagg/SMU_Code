@@ -8,10 +8,10 @@
 
 #define RANGE_CHANGE_DELAY 5							//delay time between each relay change in ms
 
-#define RELAY_INPUT_SCALING_1X 0            //放大1倍
-#define RELAY_INPUT_SCALING_6X 1           //放大6倍
+#define RELAY_INPUT_SCALING_1X 0          //放大1倍
+#define RELAY_INPUT_SCALING_6X 1          //放大6倍
 
-#define RELAY_RANGE_AUTO 0                        //自动换挡模式
+#define RELAY_RANGE_AUTO 0                //自动换挡模式
 #define RELAY_RANGE_1R 1
 #define RELAY_RANGE_10R 2
 #define RELAY_RANGE_100R 3

@@ -16,13 +16,15 @@ uint8_t Do_Calculation(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestRes
 			pTestResult->V_avg.numFloat=((float)pTestResult->V_sum)/pTestResult->sampleCount;			//此处算出来的还是adc平均值
 			//获得电流值
 			pTestResult->I_avg.numFloat=(((float)pTestResult->I_avg.numFloat)*2.5/65535-1.25)/MyPow(10,(pRelay->rangeNow-1));
+			if(pRelay->DUT_VoltageScale==RELAY_INPUT_SCALING_6X)
+				pTestResult->I_avg.numFloat/=11;
 			if(pRelay->DUT_CurrentScale==RELAY_INPUT_SCALING_6X)
-				pTestResult->I_avg.numFloat*=6.1;
+				pTestResult->I_avg.numFloat*=11;//乘多少倍不确定,需要实验测量，而且这个方法比较少用
 			//获得电压值
 			pTestResult->V_avg.numFloat=((float)pTestResult->V_avg.numFloat)/65535*2.5;
 			pTestResult->V_avg.numFloat-=1.25;
 			if(pRelay->DUT_VoltageScale==RELAY_INPUT_SCALING_6X)
-				pTestResult->I_avg.numFloat*=6.1;
+				pTestResult->I_avg.numFloat*=11;
 		
 			return 0;				
 		}

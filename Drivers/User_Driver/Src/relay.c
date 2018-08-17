@@ -11,6 +11,8 @@ void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 		pRelay->rangeNow=pRelay->rangeMode;
 	pRelay->tempMaxRange=pRelay->maxRange;
 	pRelay->tempMinRange=pRelay->minRange;
+	pRelay->DUT_CurrentScale=RELAY_INPUT_SCALING_1X;
+	pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
 	RelaySetTestMode(pTestPara->testMode);
 	SetRangeRelay(pRelay->rangeNow);
 	if(pRelay->outputConnect) ConnectOutput();
@@ -137,7 +139,7 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			{
 				pRelay->tempMaxRange--;
 				pRelay->rangeNow=pRelay->tempMaxRange;
-				SetRangeRelay(--pRelay->rangeNow);
+				SetRangeRelay(pRelay->rangeNow);
 				HAL_Delay(RANGE_CHANGE_DELAY);
 				return 1;
 			}
@@ -146,7 +148,8 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 				if(pRelay->rangeNow>pRelay->tempMinRange)														//如果档位在1档以上，仍然可以降档
 				{		
 					HAL_TIM_Base_Stop_IT(&htim2);
-					SetRangeRelay(--(pRelay->rangeNow));
+					pRelay->rangeNow--;
+					SetRangeRelay(pRelay->rangeNow);
 					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;
@@ -158,7 +161,8 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			{
 				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //如果档位在最大档以下，仍然可以升档
 				{
-					SetRangeRelay(++(pRelay->rangeNow));
+					pRelay->rangeNow++;
+					SetRangeRelay(pRelay->rangeNow);
 					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;

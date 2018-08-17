@@ -23,8 +23,8 @@ void InitTestPara(TestPara_TypeDef* pTestPara)
 	pTestPara->testStatus=OFF;		                       	//测试状态关闭
 	
 	#ifdef MANUAL_ADJUSTMENT                           		//SMU 3号
-		Adj_OutputOffset.numFloat=0.00521;//0.00009;        //校准输出端偏移量
-		Adj_OutputLinear.numFloat=1.0017;//1.003;           //校准输出端线性度
+		Adj_OutputOffset.numFloat=0;//0.00009;        //校准输出端偏移量
+		Adj_OutputLinear.numFloat=1;//1.003;           //校准输出端线性度
 	
 		Adj_MeasIOffset.numFloat=0;                  				//校准ADC监控电流偏移量
 		Adj_MeasILinear.numFloat=1;                  				//校准ADC监控电流线性度

@@ -34,25 +34,12 @@ enum MsgType msgType=MSG_TYPE_NULL;
 enum ADC_Status ADC_status=ADC_BUSY;                      	//ADC采集状态
 TestPara_TypeDef TestPara;                                	//测量参数存取
 TestResult_TypeDef TestResult;                            	//测量结果存取														
-uint8_t Uart2RxBuf[512]={0};                              		//接收PC端的设置命令和行动命令
+uint8_t Uart2RxBuf[512]={0};                              	//接收PC端的设置命令和行动命令
 uint8_t Uart2TxBuf[512]={0};                              	//向PC发送采集到的数据
 uint8_t RxComplete=0;
 uint8_t TxComplete=0;
 int16_t quietTimeTick=0;                      													//ADC采集状态
 uint8_t firstDataReady=0;										//第一个数据就位，只有第一个数据就位后扫描电压才能增加，否则出现扫描电压跳过第一个点的情况
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
-
-
-/* USER CODE BEGIN PFP */
-/* Private function prototypes -----------------------------------------------*/
-
-/* USER CODE END PFP */
-
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 int main(void)
 {
@@ -74,9 +61,6 @@ int main(void)
 			if(msgType==MSG_TYPE_SETTING)																  //如果是设置命令
 			{
 					GetTestPara(&TestPara, &Relay, Uart2RxBuf);								//接收并转化测试参数
-					InitTestResult(&TestResult);															//清空测量结果
-					SetTimerPara(&TestPara);																	//设置定时器参数和选定大小档位
-					GetRelayPara(&TestPara, &Relay);													//设置测量模式量程和放大继电器
 					//此处先测试电压值，后测试电流值
 					OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
 			}
@@ -86,7 +70,10 @@ int main(void)
 				TestResult.endOfTest=0;
 				resultNum=0;
 				firstDataReady=0;
-				ConnectOutput();																			  //既充当延时又测试档位，目前只是测试ADC值
+				InitTestResult(&TestResult);													//清空测量结果
+				GetRelayPara(&TestPara, &Relay);											//设置测量模式量程和放大继电器	
+				ConnectOutput();																			//既充当延时又测试档位，目前只是测试ADC值
+				SetTimerPara(&TestPara);															//设置定时器参数和选定大小档位
 				SetTimerAction(&TestPara);	                					//定时器动作							
 			}
 			else if(msgType==MSG_TYPE_STOP)													//如果是停止命令
@@ -117,8 +104,7 @@ int main(void)
 				HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);
 			}
 			msgType=MSG_TYPE_NULL;																				//清空消息
-		}
-		
+		}	
 
 		if(TxComplete==1)
 		{
@@ -151,6 +137,9 @@ int main(void)
 		  {
 				if(Do_Calculation(&TestPara, &TestResult, &Relay)==0)		//得到一次平均结果
 				{
+					HAL_TIM_Base_Stop_IT(&htim2);															//当前数据获取完毕，停止采样定时器
+					//只有停止采集时才响应串口中断
+					HAL_NVIC_EnableIRQ(USART1_IRQn);
 					//HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);                                     //ADC状态指示灯
 					Relay.rangeChangeTimes=0;
 					//TestResult.I_avg.numFloat=Commit_Adjustment(TestResult.I_avg.numFloat, &Relay);	//对采集到的电流进行数据处理
@@ -185,7 +174,10 @@ void EnterEndofTest(void)
 
 void StartNextSampling(void)
 {
-	HAL_TIM_Base_Start_IT(&htim2);
+	delay_us(2);											//与TIM3的开始计时时间拉开
+	htim2.Instance->CNT=0;						//计数器清零
+	HAL_NVIC_DisableIRQ(USART1_IRQn);	//采集开始后停止响应串口中断		
+	HAL_TIM_Base_Start_IT(&htim2);		//输出一次才开始AD采集的中断
 }
 
 void OutputNextVoltage(void)		
@@ -198,8 +190,7 @@ void OutputNextVoltage(void)
 		else
 		{
 			OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
-			delay_us(2);
-			HAL_TIM_Base_Start_IT(&htim2);															//输出一次才开始AD采集的中断
+			StartNextSampling();
 		}
 	
 		if(TestPara.V_Now+abs(TestPara.V_Step)>TestPara.V_End) TestResult.endOfTest=1;
@@ -212,8 +203,7 @@ void OutputNextVoltage(void)
 			else
 			{
 				OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);	
-				delay_us(2);
-				HAL_TIM_Base_Start_IT(&htim2);															//输出一次才开始AD采集的中断
+				StartNextSampling();
 			}
 		if(TestPara.V_Now-abs(TestPara.V_Step)<TestPara.V_End) TestResult.endOfTest=1;																											
 	}
@@ -229,8 +219,7 @@ void OutputNextCurrent(void)
 		else
 		{
 			OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);
-			delay_us(2);
-			HAL_TIM_Base_Start_IT(&htim2);															//输出一次才开始AD采集的中断
+			StartNextSampling();
 		}
 	
 		if(TestPara.I_Now+abs(TestPara.I_Step)>TestPara.I_End) TestResult.endOfTest=1;
@@ -243,8 +232,7 @@ void OutputNextCurrent(void)
 			else
 			{
 				OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);	
-				delay_us(2);
-				HAL_TIM_Base_Start_IT(&htim2);															//输出一次才开始AD采集的中断
+				StartNextSampling();
 			}
 		if(TestPara.I_Now-abs(TestPara.I_Step)<TestPara.I_End) TestResult.endOfTest=1;																											
 	}
@@ -259,7 +247,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (htim->Instance == htim2.Instance)
     {
 			//不管什么情况，均需采集电压和电流
-			TestResult.V_sample=AD7988_1_ReadData(&hAD7988_1_2);										//ADC电压采集数据	
+			//TestResult.V_sample=AD7988_1_ReadData(&hAD7988_1_2);										//ADC电压采集数据	
 			TestResult.I_sample=AD7988_1_ReadData(&hAD7988_1_1);										//ADC电流采集数据
 			ADC_status=ADC_READY;
     }
@@ -283,11 +271,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				quietTimeTick++;
 				if(quietTimeTick>=TestPara.quietTime)
 				{
-					quietTimeTick=-1;	//已经到达quietTime计数时间
 					HAL_TIM_Base_Stop_IT(&htim4);
+					HAL_TIM_Base_Stop_IT(&htim2);
 					ADC_status=ADC_BUSY;
 					InitTestResult(&TestResult);
+					quietTimeTick=-1;										//已经到达quietTime计数时间
 					HAL_TIM_Base_Start_IT(&htim3);			//开始扫描
+					StartNextSampling();
 				}
 		}
 }

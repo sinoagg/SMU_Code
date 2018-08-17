@@ -33,7 +33,7 @@ void SetOutput(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay)
 {
 	float outputValue;
-	if(voltage>-2400||voltage<2400)			//protect output overflow considering adjustment
+	if(voltage>-2400 && voltage<2400)			//protect output overflow considering adjustment
 	{
 		pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
 		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_1X);
@@ -43,14 +43,14 @@ void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay)
 	{
 		pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_6X;
 		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_6X);
-		outputValue=(2.5-((float)voltage/1000*Adj_OutputLinear.numFloat+Adj_OutputOffset.numFloat)/6.1)/5*65535;
+		outputValue=(2.5-((float)voltage/1000*Adj_OutputLinear.numFloat+Adj_OutputOffset.numFloat)/11)/5*65535;
 	}
 	AD5689R_WriteIR(&hAD5689R1, CH_A, outputValue);	
 }
 
-void OutputCurrent(enum TestMode testMode, int current)
+void OutputCurrent(enum TestMode testMode, int current, Relay_TypeDef* pRelay)
 {
 	float outputValue;
-	
+	//if(current)
 }
 
