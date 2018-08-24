@@ -10,11 +10,11 @@ void SetRange(Relay_TypeDef* pRelay)          //判断是否是自动换挡
 {
 	if(pRelay->rangeMode!=RELAY_RANGE_AUTO)								//如果不是自动换挡
 	{
-		 SetRangeRelay(pRelay->rangeNow);								//设置档位，后边有延时故不再加延时
+		 SetRangeRelayDirect(pRelay->rangeNow);								//设置档位，后边有延时故不再加延时
 	}
 	else
 	{
-		SetRangeRelay(pRelay->maxRange);
+		SetRangeRelayDirect(pRelay->maxRange);
 	}
 }
 

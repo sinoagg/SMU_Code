@@ -14,7 +14,8 @@ void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 	pRelay->DUT_CurrentScale=RELAY_INPUT_SCALING_1X;
 	pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
 	RelaySetTestMode(pTestPara->testMode);
-	SetRangeRelay(pRelay->rangeNow);
+	ClearAllRangeRelay();
+	SetRangeRelayDirect(pRelay->rangeNow);
 	if(pRelay->outputConnect) ConnectOutput();
 	else DisconnectOutput();
 }	
@@ -68,7 +69,7 @@ void DisconnectOutput(void)											//输出继电器断开
 	HAL_GPIO_WritePin(Ctrl14_GPIO_Port, Ctrl14_Pin , GPIO_PIN_RESET);
 }
 
-void RelayClear(void)   //初始化10个继电器控制端
+void ClearAllRangeRelay(void)   //初始化10个继电器控制端
 {
 	/*量程挡位继电器控制*/
 	HAL_GPIO_WritePin(Ctrl1_GPIO_Port, Ctrl1_Pin , GPIO_PIN_RESET); 
@@ -83,10 +84,9 @@ void RelayClear(void)   //初始化10个继电器控制端
 	HAL_GPIO_WritePin(Ctrl10_GPIO_Port, Ctrl10_Pin , GPIO_PIN_RESET); 
 }
 
-void SetRangeRelay(uint8_t rangeSelect)                                   //FVMI设置采集电压放大范围，FIMV设置电流档位
+void SetRangeRelayDirect(uint8_t selectedRange)
 {
-	RelayClear();
-	switch(rangeSelect)
+	switch(selectedRange)
 	{
 		case 1:																															//1R档位，放大1倍  
 			HAL_GPIO_WritePin(Ctrl1_GPIO_Port, Ctrl1_Pin , GPIO_PIN_SET);
@@ -121,7 +121,52 @@ void SetRangeRelay(uint8_t rangeSelect)                                   //FVMI
 		default:
 			break;
 	}
-	
+}
+
+void SetRangeRelay(uint8_t selectedRange, uint8_t currentRange)                                   //FVMI设置采集电压放大范围，FIMV设置电流档位
+{
+	SetRangeRelayDirect(selectedRange);
+	HAL_Delay(RANGE_CHANGE_DELAY);
+	ClearRangeRelay(currentRange);
+}
+
+void ClearRangeRelay(uint8_t selectedRange)                                   //FVMI设置采集电压放大范围，FIMV设置电流档位
+{
+	switch(selectedRange)
+	{
+		case 1:																															//1R档位，放大1倍  
+			HAL_GPIO_WritePin(Ctrl1_GPIO_Port, Ctrl1_Pin , GPIO_PIN_RESET);
+			break;
+		case 2:                                                             //10R档位，放大10倍
+			HAL_GPIO_WritePin(Ctrl2_GPIO_Port, Ctrl2_Pin , GPIO_PIN_RESET);
+			break;
+		case 3:                                                             //100R档位，放大10^2倍
+			HAL_GPIO_WritePin(Ctrl3_GPIO_Port, Ctrl3_Pin , GPIO_PIN_RESET);
+			break;
+		case 4:                                                             //1K档位，放大10^3倍
+			HAL_GPIO_WritePin(Ctrl4_GPIO_Port, Ctrl4_Pin , GPIO_PIN_RESET);
+			break;
+		case 5:                                                             //10K档位，放大10^4倍
+			HAL_GPIO_WritePin(Ctrl5_GPIO_Port, Ctrl5_Pin , GPIO_PIN_RESET);
+			break;
+		case 6:                                                             //100K档位，放大10^5倍
+			HAL_GPIO_WritePin(Ctrl6_GPIO_Port, Ctrl6_Pin , GPIO_PIN_RESET);
+			break;
+		case 7:                                                             //1M档位，放大10^6倍
+			HAL_GPIO_WritePin(Ctrl7_GPIO_Port, Ctrl7_Pin , GPIO_PIN_RESET);
+			break;
+		case 8:                                                             //10M档位，放大10^7倍
+			HAL_GPIO_WritePin(Ctrl8_GPIO_Port, Ctrl8_Pin , GPIO_PIN_RESET);
+			break;
+		case 9:                                                             //100M档位，放大10^8倍
+			HAL_GPIO_WritePin(Ctrl9_GPIO_Port, Ctrl9_Pin , GPIO_PIN_RESET);
+			break;
+		case 10:                                                            //1G档位，放大10^9倍
+			HAL_GPIO_WritePin(Ctrl10_GPIO_Port, Ctrl10_Pin , GPIO_PIN_RESET);
+			break;
+		default:
+			break;
+	}
 }
 /******************************************************************/
 /*检查测量档位是否正确												                    */
@@ -138,8 +183,8 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			if((pRelay->rangeChangeTimes>9) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//如果换挡次数多于9次,将最大挡位自动降低一档
 			{
 				pRelay->tempMaxRange--;
+				SetRangeRelay(pRelay->tempMaxRange, pRelay->rangeNow);
 				pRelay->rangeNow=pRelay->tempMaxRange;
-				SetRangeRelay(pRelay->rangeNow);
 				HAL_Delay(RANGE_CHANGE_DELAY);
 				return 1;
 			}
@@ -148,8 +193,8 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 				if(pRelay->rangeNow>pRelay->tempMinRange)														//如果档位在1档以上，仍然可以降档
 				{		
 					HAL_TIM_Base_Stop_IT(&htim2);
+					SetRangeRelay(pRelay->rangeNow-1, pRelay->rangeNow);
 					pRelay->rangeNow--;
-					SetRangeRelay(pRelay->rangeNow);
 					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;
@@ -161,8 +206,8 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			{
 				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //如果档位在最大档以下，仍然可以升档
 				{
+					SetRangeRelay(pRelay->rangeNow+1, pRelay->rangeNow);
 					pRelay->rangeNow++;
-					SetRangeRelay(pRelay->rangeNow);
 					pRelay->rangeChangeTimes++;
 					HAL_Delay(RANGE_CHANGE_DELAY);
 					return 1;

@@ -27,7 +27,8 @@
 #define ID "3102002032031000001"
 //#define UNDER_DEBUG
 /* USER CODE END Includes */
-
+void OutputNextVoltage(void);
+void OutputNextCurrent(void);
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 enum MsgType msgType=MSG_TYPE_NULL;
@@ -38,8 +39,8 @@ uint8_t Uart2RxBuf[512]={0};                              	//½ÓÊÕPC¶ËµÄÉèÖÃÃüÁîº
 uint8_t Uart2TxBuf[512]={0};                              	//ÏòPC·¢ËÍ²É¼¯µ½µÄÊý¾Ý
 uint8_t RxComplete=0;
 uint8_t TxComplete=0;
-int16_t quietTimeTick=0;                      													//ADC²É¼¯×´Ì¬
-uint8_t firstDataReady=0;										//µÚÒ»¸öÊý¾Ý¾ÍÎ»£¬Ö»ÓÐµÚÒ»¸öÊý¾Ý¾ÍÎ»ºóÉ¨ÃèµçÑ¹²ÅÄÜÔö¼Ó£¬·ñÔò³öÏÖÉ¨ÃèµçÑ¹Ìø¹ýµÚÒ»¸öµãµÄÇé¿ö
+int16_t quietTimeTick=0;                      							//ADC²É¼¯×´Ì¬
+uint8_t firstDataReady=0;																		//µÚÒ»¸öÊý¾Ý¾ÍÎ»£¬Ö»ÓÐµÚÒ»¸öÊý¾Ý¾ÍÎ»ºóÉ¨ÃèµçÑ¹²ÅÄÜÔö¼Ó£¬·ñÔò³öÏÖÉ¨ÃèµçÑ¹Ìø¹ýµÚÒ»¸öµãµÄÇé¿ö
 
 int main(void)
 {
@@ -47,6 +48,7 @@ int main(void)
 	Hardware_Init();
 	//Get adjustment data
 	InitTestPara(&TestPara);
+	OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);											//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì
 	#ifdef UNDER_DEBUG
 		ConnectOutput();
 		SetRangeRelay(9);
@@ -79,9 +81,10 @@ int main(void)
 			else if(msgType==MSG_TYPE_STOP)													//Èç¹ûÊÇÍ£Ö¹ÃüÁî
 			{
 				TestPara.testCmd=CMD_STOP;
-				ADC_status=ADC_BUSY;																	  //Í£Ö¹USB´«Êä
+				ADC_status=ADC_BUSY;																	//Í£Ö¹USB´«Êä
 				SetTimerAction(&TestPara);														//Í£Ö¹¶¨Ê±Æ÷
 				DisconnectOutput();
+				OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);						//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì
 			}
 			else if(msgType==MSG_TYPE_QUERY)												//Èç¹ûÊÇ²éÑ¯ÃüÁî
 			{
@@ -98,12 +101,12 @@ int main(void)
 				Uart2TxBuf[0]=DEV_ADDR;
 				sprintf((char*)Uart2TxBuf+1, (const char*)ID);
 				HAL_Delay(Uart2TxBuf[UART_TX_LEN-1]*50+50);														//×îºóÒ»Î»ÊÇÐòÁÐºÅ ´Ó50ms¿ªÊ¼£¬Ò»Ö±µ½550msÌØÕ÷ÑÓÊ±
-				HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);//Ê¹ÄÜ´®¿Ú1·¢ËÍ
+				HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);	//Ê¹ÄÜ´®¿Ú1·¢ËÍ
 				HAL_UART_Transmit(&huart2, Uart2TxBuf, UART_TX_LEN, 1000);
 				HAL_Delay(10);
 				HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);
 			}
-			msgType=MSG_TYPE_NULL;																				//Çå¿ÕÏûÏ¢
+			msgType=MSG_TYPE_NULL;																									//Çå¿ÕÏûÏ¢
 		}	
 
 		if(TxComplete==1)
@@ -137,7 +140,7 @@ int main(void)
 		  {
 				if(Do_Calculation(&TestPara, &TestResult, &Relay)==0)		//µÃµ½Ò»´ÎÆ½¾ù½á¹û
 				{
-					HAL_TIM_Base_Stop_IT(&htim2);															//µ±Ç°Êý¾Ý»ñÈ¡Íê±Ï£¬Í£Ö¹²ÉÑù¶¨Ê±Æ÷
+					HAL_TIM_Base_Stop_IT(&htim2);													//µ±Ç°Êý¾Ý»ñÈ¡Íê±Ï£¬Í£Ö¹²ÉÑù¶¨Ê±Æ÷
 					//Ö»ÓÐÍ£Ö¹²É¼¯Ê±²ÅÏìÓ¦´®¿ÚÖÐ¶Ï
 					HAL_NVIC_EnableIRQ(USART1_IRQn);
 					//HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);                                     //ADC×´Ì¬Ö¸Ê¾µÆ
@@ -148,6 +151,14 @@ int main(void)
 						prepareTxData(&TestPara, &TestResult, Uart2TxBuf+resultNum*UART_TX_LEN);
 						resultNum++;
 						firstDataReady=1;
+						if(TestPara.testMode==MODE_FVMI_SWEEP)
+						{
+							OutputNextVoltage();
+						}
+						else if(TestPara.testMode==MODE_FIMV_SWEEP)
+						{
+							OutputNextCurrent();
+						}
 					}
 					InitTestResult(&TestResult);
 				}
@@ -169,6 +180,7 @@ void EnterEndofTest(void)
 	HAL_TIM_Base_Stop_IT(&htim3);																		//DACÊä³öÊý¾ÝÖÐ¶Ï¹Ø±Õ		
 	HAL_TIM_Base_Stop_IT(&htim2);	
 	TestPara.testStatus=OFF;
+	OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);											//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì¬
 	//ClearAllVoltage();			Disconnect();																				//Êä³öµçÑ¹ÇåÁã
 }
 
@@ -190,7 +202,6 @@ void OutputNextVoltage(void)
 		else
 		{
 			OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
-			StartNextSampling();
 		}
 	
 		if(TestPara.V_Now+abs(TestPara.V_Step)>TestPara.V_End) TestResult.endOfTest=1;
@@ -203,7 +214,6 @@ void OutputNextVoltage(void)
 			else
 			{
 				OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);	
-				StartNextSampling();
 			}
 		if(TestPara.V_Now-abs(TestPara.V_Step)<TestPara.V_End) TestResult.endOfTest=1;																											
 	}
@@ -219,7 +229,6 @@ void OutputNextCurrent(void)
 		else
 		{
 			OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);
-			StartNextSampling();
 		}
 	
 		if(TestPara.I_Now+abs(TestPara.I_Step)>TestPara.I_End) TestResult.endOfTest=1;
@@ -232,7 +241,6 @@ void OutputNextCurrent(void)
 			else
 			{
 				OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);	
-				StartNextSampling();
 			}
 		if(TestPara.I_Now-abs(TestPara.I_Step)<TestPara.I_End) TestResult.endOfTest=1;																											
 	}
@@ -253,18 +261,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     }
 	  else if (htim->Instance == htim3.Instance)
 		{
-			if(TestPara.testMode==MODE_FVMI_SWEEP)
-			{
-				OutputNextVoltage();
-			}
-			else if(TestPara.testMode==MODE_FIMV_SWEEP)
-			{
-				OutputNextCurrent();
-			}
-			else if(TestPara.testMode==MODE_FVMI_NO_SWEEP||TestPara.testMode==MODE_FIMV_NO_SWEEP)
-			{
-				StartNextSampling();
-			}
+			StartNextSampling();
 		}
 		else if (htim->Instance == htim4.Instance)		//DAC¶¨Ê±Æ÷
 		{

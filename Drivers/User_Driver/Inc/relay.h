@@ -53,8 +53,8 @@ typedef struct
 
 extern Relay_TypeDef Relay;
 
-void RelayClear(void);
-void SetRangeRelay(uint8_t range_select);
+void ClearAllRangeRelay(void);
+void SetRangeRelay(uint8_t selectedRange, uint8_t currentRange);
 void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay);
 uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Relay_TypeDef* pRelay);
 void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay);
@@ -62,6 +62,9 @@ void RelaySetTestMode(enum TestMode testmode);
 void RelaySetInputScaling(enum TestMode testMode, uint8_t scale);
 void ConnectOutput(void);											//输出继电器连接
 void DisconnectOutput(void);									//输出继电器断开
+
+void SetRangeRelayDirect(uint8_t selectedRange);
+void ClearRangeRelay(uint8_t selectedRange);
 
 #endif
 
