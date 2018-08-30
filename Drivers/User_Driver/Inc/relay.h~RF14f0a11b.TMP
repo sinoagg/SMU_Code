@@ -9,7 +9,7 @@
 #define RANGE_CHANGE_DELAY 5							//delay time between each relay change in ms
 
 #define RELAY_INPUT_SCALING_1X 0          //放大1倍
-#define RELAY_INPUT_SCALING_11X 1          //放大6倍
+#define RELAY_INPUT_SCALING_6X 1          //放大6倍
 
 #define RELAY_RANGE_AUTO 0                //自动换挡模式
 #define RELAY_RANGE_1R 1
@@ -23,7 +23,7 @@
 #define RELAY_RANGE_100M 9
 #define RELAY_RANGE_1G 10
 
-#define DEFAULT_RELAY_INPUT_SCALING RELAY_INPUT_SCALING_11X
+#define DEFAULT_RELAY_INPUT_SCALING RELAY_INPUT_SCALING_6X
 #define DEFAULT_RELAY_TEST_MODE RELAY_TEST_MODE_FIMV
 #define DEFAULT_RELAY_CHANGE_MODE RELAY_RANGE_AUTO
 #define DEFAULT_RELAY_MAX_RANGE RELAY_RANGE_1G
@@ -57,6 +57,7 @@ void ClearAllRangeRelay(void);
 void SetRangeRelay(uint8_t selectedRange, uint8_t currentRange);
 void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay);
 uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Relay_TypeDef* pRelay);
+void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay);
 void RelaySetTestMode(enum TestMode testmode);
 void RelaySetInputScaling(enum TestMode testMode, uint8_t scale);
 void ConnectOutput(void);											//输出继电器连接

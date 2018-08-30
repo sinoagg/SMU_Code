@@ -16,13 +16,13 @@ void GetRelayPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 	RelaySetTestMode(pTestPara->testMode);
 	ClearAllRangeRelay();
 	SetRangeRelayDirect(pRelay->rangeNow);
-	if(pRelay->outputConnect) ConnectOutput();
+	if(pRelay->outputConnect) ConnectOutput();			//此处需要设置是否链接输出继电器，恒压模式下，继电器需要一直连接；恒流模式下，继电器只有在需要时连接
 	else DisconnectOutput();
 }	
 
 void RelaySetInputScaling(enum TestMode testMode, uint8_t scale) //设置反馈电压放大倍数
 {
-	if(testMode==MODE_FVMI_SWEEP||testMode==MODE_FVMI_NO_SWEEP)
+	if(testMode==MODE_FVMI_SWEEP||testMode==MODE_FVMI_NO_SWEEP||testMode==MODE_MV) //在FVMI实验中，电压是参与反馈的，在MV实验重，知识分压，不参与反馈
 	{
 		if(scale==RELAY_INPUT_SCALING_1X)
 		{
@@ -178,7 +178,7 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 		return 0;
 	else
 	{
-		if(testMode==MODE_FVMI_NO_SWEEP||testMode==MODE_FVMI_SWEEP) 				//如果为FVMI自动换挡模式		
+		if(testMode==MODE_FVMI_NO_SWEEP||testMode==MODE_FVMI_SWEEP) 						//如果为FVMI自动换挡模式		
 		{	
 			if((pRelay->rangeChangeTimes>9) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//如果换挡次数多于9次,将最大挡位自动降低一档
 			{
@@ -188,7 +188,7 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 				HAL_Delay(RANGE_CHANGE_DELAY);
 				return 1;
 			}
-			if((pTestResult->I_sample>0xE666)||(pTestResult->I_sample<0x2000))				//如果采集到的电流值过大
+			if((pTestResult->I_sample>0xFD00)||(pTestResult->I_sample<0x0300))				//如果采集到的电流值过大
 			{
 				if(pRelay->rangeNow>pRelay->tempMinRange)														//如果档位在1档以上，仍然可以降档
 				{		
@@ -202,7 +202,7 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 				else																															//如果档位在1档，无法降档，换挡结束
 					return 0;
 			}
-			else if((pTestResult->I_sample<0x8200)&&(pTestResult->I_sample>0x7DFF))			//如果采集到的电流过小
+			else if((pTestResult->I_sample<0x8600)&&(pTestResult->I_sample>0x7B00))			//如果采集到的电流过小
 			{
 				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //如果档位在最大档以下，仍然可以升档
 				{
@@ -218,59 +218,30 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			else 																																//电压范围正常
 				return 0;
 		}
-		/*else if(pTestPara->testMode==MODE_FIMV_NO_SWEEP||pTestPara->testMode==MODE_FIMV_SWEEP)  //如果为FIMV模式
+		
+		else if(testMode==MODE_FIMV_NO_SWEEP||testMode==MODE_FIMV_SWEEP||testMode==MODE_MV)  //如果为FIMV模式
 		{
-			if((origin_adcvalue_V>0xFD00)||(origin_adcvalue_V<0x300))  			   //如果采集到的电流过大
-		{
-			phMonitorCH->monitorch_relaystate=RELAY_INPUT_SCALING_1D12;
-			Relay_ADC_Voltage_Scaling(RELAY_INPUT_SCALING_1D12);
-			
-			HAL_Delay(RANGE_CHANGE_DELAY);			
-			return 1;
+			if((pTestResult->V_sample>0xFD00)||(pTestResult->V_sample<0x0300)) 		//如果采集到的电压过大
+			{
+				HAL_TIM_Base_Stop_IT(&htim2);
+				RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_11X);		//实际电压是ADC电压的11倍
+				HAL_Delay(RANGE_CHANGE_DELAY);			
+				return 1;
+			}
+			else if((pTestResult->V_sample<0x8600)&&(pTestResult->V_sample>0x7B00))					//如果采集到的电流过小
+			{
+				HAL_TIM_Base_Stop_IT(&htim2);
+				RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_1X);		//实际电压是ADC电压的1倍
+				HAL_Delay(RANGE_CHANGE_DELAY);			
+				return 1;
+			}
+			else
+				return 0;
 		}
-		else if((origin_adcvalue_V<0x8800)&&(origin_adcvalue_V>0x78FF))			//如果采集到的电流过小
-		{
-			phMonitorCH->monitorch_relaystate=RELAY_INPUT_SCALING_5D6;
-			Relay_ADC_Voltage_Scaling(RELAY_INPUT_SCALING_5D6);
-			pResultPara->ADC_sample_count=0;																//换挡后需要重新计数
-			pResultPara->ADC_sample_sum_V=0;																//换挡后需要重新计算
-			HAL_Delay(RANGE_CHANGE_DELAY);			
-			return 1;
-		}*/
-		else
+		else 
 			return 0;
 	}
 }
 
-/******************************************************************/
-/*检查监控档位是否正确					                               		*/
-/*返回值：origin_adcvalue																	        */
-/******************************************************************/
-/*float Relay_Check_Monitor(MonitorCH_TypeDef *phMonitorCH,	uint8_t monitor_mode)
-{
-	float origin_adcvalue;
-	origin_adcvalue=AD7988_1_ReadData(phMonitorCH->phAD7988_1_x);	 //ADC电压采集数据	
-	if((origin_adcvalue>0xFD00)||(origin_adcvalue<0x300))  			   //如果采集到的电流过大
-	{
-			phMonitorCH->monitorch_relaystate=RELAY_INPUT_SCALING_1D12;
-			if(monitor_mode==RELAY_TEST_MODE_FVMI)
-			  Relay_ADC_Voltage_Scaling(RELAY_INPUT_SCALING_1D12);
-			else if(monitor_mode==RELAY_TEST_MODE_FIMV)
-				Relay_ADC_Current_Scaling(RELAY_INPUT_SCALING_1D12);
-			HAL_Delay(20);			
-			origin_adcvalue=AD7988_1_ReadData(phMonitorCH->phAD7988_1_x);
-	}
-	else if((origin_adcvalue<0x8800)&&(origin_adcvalue>0x78FF))			//如果采集到的电流过小
-	{
-			phMonitorCH->monitorch_relaystate=RELAY_INPUT_SCALING_5D6;
-			if(monitor_mode==RELAY_TEST_MODE_FVMI)
-				Relay_ADC_Voltage_Scaling(RELAY_INPUT_SCALING_5D6);
-			else if(monitor_mode==RELAY_TEST_MODE_FIMV)
-				Relay_ADC_Current_Scaling(RELAY_INPUT_SCALING_5D6);
-			HAL_Delay(20);	
-			origin_adcvalue=AD7988_1_ReadData(phMonitorCH->phAD7988_1_x);
-		}
-	return origin_adcvalue;
-}*/
 
 

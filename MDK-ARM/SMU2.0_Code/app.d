@@ -50,3 +50,4 @@ smu2.0_code\app.o: ..\Drivers\User_Driver\Inc\para_init.h
 smu2.0_code\app.o: app.h
 smu2.0_code\app.o: ..\Drivers\User_Driver\Inc\hardware.h
 smu2.0_code\app.o: ..\Drivers\User_Driver\Inc\AD8253.h
+smu2.0_code\app.o: ..\Drivers\User_Driver\Inc\calculation.h

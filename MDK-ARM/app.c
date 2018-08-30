@@ -4,7 +4,7 @@
 #include "para_init.h"
 #include "app.h"
 #include "hardware.h"
-
+#include "calculation.h"
 
 void SetRange(Relay_TypeDef* pRelay)          //判断是否是自动换挡
 {
@@ -18,11 +18,11 @@ void SetRange(Relay_TypeDef* pRelay)          //判断是否是自动换挡
 	}
 }
 
-void SetOutput(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
+void SetOutput(TestPara_TypeDef* pTestPara)
 {
 	if(pTestPara->testMode==MODE_FIMV_NO_SWEEP||pTestPara->testMode==MODE_FIMV_SWEEP)
 	{
-	  OutputVoltage(pTestPara->testMode, pTestPara->V_Now, pRelay);
+	  OutputVoltage(MODE_FVMI_SWEEP, pTestPara->V_Now);
 	}
 	else if(pTestPara->testMode==MODE_FVMI_NO_SWEEP||pTestPara->testMode==MODE_FVMI_SWEEP)
 	{
@@ -30,27 +30,45 @@ void SetOutput(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay)
 	}
 }
 
-void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay)
+void OutputVoltage(enum TestMode testMode, int voltage)
 {
 	float outputValue;
 	if(voltage>-2400 && voltage<2400)			//protect output overflow considering adjustment
 	{
-		pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
-		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_1X);
+		Relay.DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
+		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_1X);			
 		outputValue=(2.5-((float)voltage/1000*Adj_OutputLinear.numFloat+Adj_OutputOffset.numFloat))/5*65535;
 	}
 	else
 	{
-		pRelay->DUT_VoltageScale=RELAY_INPUT_SCALING_6X;
-		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_6X);
+		Relay.DUT_VoltageScale=RELAY_INPUT_SCALING_11X;
+		RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_11X);
 		outputValue=(2.5-((float)voltage/1000*Adj_OutputLinear.numFloat+Adj_OutputOffset.numFloat)/11)/5*65535;
 	}
 	AD5689R_WriteIR(&hAD5689R1, CH_A, outputValue);	
 }
 
-void OutputCurrent(enum TestMode testMode, int current, Relay_TypeDef* pRelay)
+void OutputCurrent(enum TestMode testMode, int16_t current, uint8_t currentUnit, uint8_t selectedRange)
 {
 	float outputValue;
-	//if(current)
+	if(selectedRange==RELAY_RANGE_AUTO)
+	{
+		float realCurrent=(float)abs(current)*MyPow(0.1, 3*currentUnit+3);
+		float limitCurrent=1.25e-9;
+		uint8_t tempRange=9;
+		while(limitCurrent<realCurrent)
+		{
+			limitCurrent*=10;					//电流切换到更大挡位
+			tempRange--;							//量程换到电阻更小挡位
+		}
+		outputValue=current*MyPow(10, tempRange-3*currentUnit-1); //单位mV
+		SetRangeRelayDirect(tempRange);
+	}
+	else
+	{
+		outputValue=current*MyPow(10, selectedRange-3*currentUnit-1); //单位mV
+		SetRangeRelayDirect(selectedRange);
+	}
+	OutputVoltage(testMode, outputValue);
 }
 

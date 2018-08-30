@@ -4,10 +4,6 @@
 #include "stm32f1xx_hal.h"
 #include "usbd_custom_hid_if.h"
 
-#define I_UNIT_MA 0
-#define I_UNIT_UA 1
-#define I_UNIT_NA 2
-#define I_UNIT_PA 3
 enum MsgType
 {
 	MSG_TYPE_NULL=0,
@@ -40,8 +36,7 @@ enum TestMode
 	MODE_FVMI_SWEEP=1,
 	MODE_FIMV_SWEEP=2,
 	MODE_FVMI_NO_SWEEP=3,
-	MODE_FIMV_NO_SWEEP=4,
-	MODE_MV=5
+	MODE_FIMV_NO_SWEEP=4
 };
 
 typedef union										//电流值数据组织形式

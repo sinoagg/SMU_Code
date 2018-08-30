@@ -29,6 +29,7 @@
 /* USER CODE END Includes */
 void OutputNextVoltage(void);
 void OutputNextCurrent(void);
+void OutputZeroVoltage(void);
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 enum MsgType msgType=MSG_TYPE_NULL;
@@ -48,43 +49,42 @@ int main(void)
 	Hardware_Init();
 	//Get adjustment data
 	InitTestPara(&TestPara);
-	OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);											//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì
-	#ifdef UNDER_DEBUG
-		ConnectOutput();
-		SetRangeRelay(9);
-	#endif
+	OutputZeroVoltage();	//Êä³öÁãµçÑ¹
 	HAL_UART_Receive_DMA(&huart2, Uart2RxBuf, UART_RX_LEN);
 	
 	while (1)
   {	
 		if(msgType!=MSG_TYPE_NULL)																			//Èç¹ûÉè±¸ÊÕµ½ÐÂµÄÃüÁî
 		{
-			//HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);									//Ö¸Ê¾µÆÉÁË¸
+			HAL_GPIO_TogglePin(LED0_GPIO_Port, LED0_Pin);									//Ö¸Ê¾µÆÉÁË¸
 			if(msgType==MSG_TYPE_SETTING)																  //Èç¹ûÊÇÉèÖÃÃüÁî
 			{
 					GetTestPara(&TestPara, &Relay, Uart2RxBuf);								//½ÓÊÕ²¢×ª»¯²âÊÔ²ÎÊý
-					//´Ë´¦ÏÈ²âÊÔµçÑ¹Öµ£¬ºó²âÊÔµçÁ÷Öµ
-					OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
+					GetRelayPara(&TestPara, &Relay);													//ÉèÖÃ²âÁ¿Ä£Ê½Á¿³ÌºÍ·Å´ó¼ÌµçÆ÷
+					if(TestPara.testMode==MODE_FVMI_SWEEP||TestPara.testMode==MODE_FVMI_NO_SWEEP)
+						OutputVoltage(TestPara.testMode, TestPara.V_Now);
+					else if(TestPara.testMode==MODE_FIMV_SWEEP||TestPara.testMode==MODE_FIMV_NO_SWEEP)
+						OutputCurrent(TestPara.testMode, TestPara.I_Now, TestPara.I_Unit, Relay.rangeMode);
+					//else if(TestPara.testMode==MODE_MV)
+						//DisconnectOutput();
 			}
-			else if(msgType==MSG_TYPE_RUN)                            //Èç¹ûÊÇÐÐ¶¯ÃüÁî
+			else if(msgType==MSG_TYPE_RUN)                            		//Èç¹ûÊÇÐÐ¶¯ÃüÁî
 			{
 				TestPara.testCmd=CMD_START;
 				TestResult.endOfTest=0;
 				resultNum=0;
 				firstDataReady=0;
-				InitTestResult(&TestResult);													//Çå¿Õ²âÁ¿½á¹û
-				GetRelayPara(&TestPara, &Relay);											//ÉèÖÃ²âÁ¿Ä£Ê½Á¿³ÌºÍ·Å´ó¼ÌµçÆ÷	
-				ConnectOutput();																			//¼È³äµ±ÑÓÊ±ÓÖ²âÊÔµµÎ»£¬Ä¿Ç°Ö»ÊÇ²âÊÔADCÖµ
+				ADC_status=ADC_BUSY;
+				InitTestResult(&TestResult);													//Çå¿Õ²âÁ¿½á¹û	
 				SetTimerPara(&TestPara);															//ÉèÖÃ¶¨Ê±Æ÷²ÎÊýºÍÑ¡¶¨´óÐ¡µµÎ»
 				SetTimerAction(&TestPara);	                					//¶¨Ê±Æ÷¶¯×÷							
 			}
 			else if(msgType==MSG_TYPE_STOP)													//Èç¹ûÊÇÍ£Ö¹ÃüÁî
 			{
 				TestPara.testCmd=CMD_STOP;
-				ADC_status=ADC_BUSY;																	//Í£Ö¹USB´«Êä
+				ADC_status=ADC_BUSY;																	//Í£Ö¹¼ÆËãºÍ´«Êä
 				SetTimerAction(&TestPara);														//Í£Ö¹¶¨Ê±Æ÷
-				DisconnectOutput();
-				OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);						//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì
+				OutputZeroVoltage();									
 			}
 			else if(msgType==MSG_TYPE_QUERY)												//Èç¹ûÊÇ²éÑ¯ÃüÁî
 			{
@@ -112,7 +112,6 @@ int main(void)
 		if(TxComplete==1)
 		{
 			TxComplete=0;
-			//HAL_Delay(2);			//ËäÈ»µ¥Æ¬»ú·¢ÍêÁË£¬µ«ÊÇ485Ð¾Æ¬²¢Ã»ÓÐ·¢Íê
 			HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);	//Ê¹ÄÜ485½ÓÊÕ
 		}
 		if(RxComplete==1)
@@ -175,13 +174,18 @@ int main(void)
 
 }
 /* USER CODE BEGIN 4 */
+void OutputZeroVoltage(void)
+{
+	ConnectOutput();
+	OutputVoltage(MODE_FVMI_SWEEP, 0);
+}
+
 void EnterEndofTest(void)
 {
 	HAL_TIM_Base_Stop_IT(&htim3);																		//DACÊä³öÊý¾ÝÖÐ¶Ï¹Ø±Õ		
 	HAL_TIM_Base_Stop_IT(&htim2);	
 	TestPara.testStatus=OFF;
-	OutputVoltage(MODE_FVMI_SWEEP, 0, &Relay);											//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì¬
-	//ClearAllVoltage();			Disconnect();																				//Êä³öµçÑ¹ÇåÁã
+	OutputVoltage(MODE_FVMI_SWEEP, 0);															//»Ö¸´µ½0µçÑ¹³õÊ¼×´Ì¬
 }
 
 void StartNextSampling(void)
@@ -201,7 +205,7 @@ void OutputNextVoltage(void)
 		if(TestPara.V_Now>TestPara.V_End) EnterEndofTest();
 		else
 		{
-			OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);
+			OutputVoltage(MODE_FVMI_SWEEP, TestPara.V_Now);
 		}
 	
 		if(TestPara.V_Now+abs(TestPara.V_Step)>TestPara.V_End) TestResult.endOfTest=1;
@@ -213,7 +217,7 @@ void OutputNextVoltage(void)
 			if(TestPara.V_Now<TestPara.V_End)	EnterEndofTest();
 			else
 			{
-				OutputVoltage(TestPara.testMode, TestPara.V_Now, &Relay);	
+				OutputVoltage(MODE_FVMI_SWEEP, TestPara.V_Now);			//sweepºÍno sweepÔÚ´Ë´¦µÈÐ§
 			}
 		if(TestPara.V_Now-abs(TestPara.V_Step)<TestPara.V_End) TestResult.endOfTest=1;																											
 	}
@@ -228,7 +232,7 @@ void OutputNextCurrent(void)
 		if(TestPara.I_Now>TestPara.I_End) EnterEndofTest();
 		else
 		{
-			OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);
+			OutputCurrent(TestPara.testMode, TestPara.I_Now, TestPara.I_Unit, Relay.rangeMode);
 		}
 	
 		if(TestPara.I_Now+abs(TestPara.I_Step)>TestPara.I_End) TestResult.endOfTest=1;
@@ -240,7 +244,7 @@ void OutputNextCurrent(void)
 			if(TestPara.I_Now<TestPara.I_End)	EnterEndofTest();
 			else
 			{
-				OutputVoltage(TestPara.testMode, TestPara.I_Now, &Relay);	
+				OutputCurrent(TestPara.testMode, TestPara.I_Now, TestPara.I_Unit, Relay.rangeMode);	
 			}
 		if(TestPara.I_Now-abs(TestPara.I_Step)<TestPara.I_End) TestResult.endOfTest=1;																											
 	}
@@ -255,7 +259,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		if (htim->Instance == htim2.Instance)
     {
 			//²»¹ÜÊ²Ã´Çé¿ö£¬¾ùÐè²É¼¯µçÑ¹ºÍµçÁ÷
-			//TestResult.V_sample=AD7988_1_ReadData(&hAD7988_1_2);										//ADCµçÑ¹²É¼¯Êý¾Ý	
+			TestResult.V_sample=AD7988_1_ReadData(&hAD7988_1_2);										//ADCµçÑ¹²É¼¯Êý¾Ý	
 			TestResult.I_sample=AD7988_1_ReadData(&hAD7988_1_1);										//ADCµçÁ÷²É¼¯Êý¾Ý
 			ADC_status=ADC_READY;
     }

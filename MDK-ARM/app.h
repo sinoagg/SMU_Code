@@ -7,8 +7,9 @@ enum ADC_Status
 	ADC_BUSY=1
 };
 
-void SetOutput(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay);
-void OutputVoltage(enum TestMode testMode, int voltage, Relay_TypeDef* pRelay);
+void SetOutput(TestPara_TypeDef* pTestPara);
+void OutputVoltage(enum TestMode testMode, int voltage);
+void OutputCurrent(enum TestMode testMode, int16_t current, uint8_t currentUnit, uint8_t selectedRange);
 
 #endif
 
