@@ -33,6 +33,7 @@ void SetOutput(TestPara_TypeDef* pTestPara)
 void OutputVoltage(enum TestMode testMode, int voltage)
 {
 	float outputValue;
+	uint8_t tempRelayVoltageScale=Relay.DUT_VoltageScale;
 	if(voltage>-2400 && voltage<2400)			//protect output overflow considering adjustment
 	{
 		Relay.DUT_VoltageScale=RELAY_INPUT_SCALING_1X;
@@ -46,6 +47,12 @@ void OutputVoltage(enum TestMode testMode, int voltage)
 		outputValue=(2.5-((float)voltage/1000*Adj_OutputLinear.numFloat+Adj_OutputOffset.numFloat)/11)/5*65535;
 	}
 	AD5689R_WriteIR(&hAD5689R1, CH_A, outputValue);	
+	if(tempRelayVoltageScale!=Relay.DUT_VoltageScale)
+	{
+		HAL_TIM_Base_Stop_IT(&htim3);
+		HAL_Delay(400);
+		HAL_TIM_Base_Start_IT(&htim3);
+	}
 }
 
 void OutputCurrent(enum TestMode testMode, int16_t current, uint8_t currentUnit, uint8_t selectedRange)

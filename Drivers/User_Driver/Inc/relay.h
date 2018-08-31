@@ -6,7 +6,7 @@
 #include "prj_typedef.h"
 #include "AD7988_1.h"
 
-#define RANGE_CHANGE_DELAY 5							//delay time between each relay change in ms
+#define RANGE_CHANGE_DELAY 100						//delay time between each relay change in ms
 
 #define RELAY_INPUT_SCALING_1X 0          //放大1倍
 #define RELAY_INPUT_SCALING_11X 1          //放大6倍

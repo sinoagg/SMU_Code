@@ -107,6 +107,7 @@ void GetTestPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay, uint8_t* pU
 		pRelay->rangeMode=(*(pUartRxBuf+26))&0x0F;
 		pRelay->maxRange=*(pUartRxBuf+27);
 		pRelay->minRange=*(pUartRxBuf+28);
+		pRelay->outputConnect=(*(pUartRxBuf+3))&0x01;		//此字节最低位代表输出继电器开关状态
 	}	
 }
 

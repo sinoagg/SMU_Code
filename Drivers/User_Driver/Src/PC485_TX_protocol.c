@@ -1,7 +1,6 @@
 #include "PC485_TX_protocol.h"
 
-#define DEV_ADDR 0x01
-#define UART_TX_LEN 20
+#define DEV_ADDR 0x01																						//上位机配置数据长度
 
 void prepareTxData(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult, uint8_t* pUartTxBuf)
 {

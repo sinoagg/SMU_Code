@@ -30,7 +30,7 @@ void RelaySetInputScaling(enum TestMode testMode, uint8_t scale) //ÉèÖÃ·´À¡µçÑ¹·
 		}
 		else
 		{
-			HAL_GPIO_WritePin(Ctrl11_GPIO_Port, Ctrl11_Pin , GPIO_PIN_SET); 
+			HAL_GPIO_WritePin(Ctrl11_GPIO_Port, Ctrl11_Pin , GPIO_PIN_SET);
 		}
 	}
 	
@@ -182,21 +182,28 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 		{	
 			if((pRelay->rangeChangeTimes>9) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//Èç¹û»»µ²´ÎÊý¶àÓÚ9´Î,½«×î´óµ²Î»×Ô¶¯½µµÍÒ»µµ
 			{
+				if(testMode==MODE_FVMI_SWEEP)
+					HAL_TIM_Base_Stop_IT(&htim3);
+				HAL_TIM_Base_Stop_IT(&htim2);
+				
 				pRelay->tempMaxRange--;
 				SetRangeRelay(pRelay->tempMaxRange, pRelay->rangeNow);
 				pRelay->rangeNow=pRelay->tempMaxRange;
-				HAL_Delay(RANGE_CHANGE_DELAY);
+				HAL_Delay(RANGE_CHANGE_DELAY*(pRelay->rangeNow));
 				return 1;
 			}
 			if((pTestResult->I_sample>0xFD00)||(pTestResult->I_sample<0x0300))				//Èç¹û²É¼¯µ½µÄµçÁ÷Öµ¹ý´ó
 			{
 				if(pRelay->rangeNow>pRelay->tempMinRange)														//Èç¹ûµµÎ»ÔÚ1µµÒÔÉÏ£¬ÈÔÈ»¿ÉÒÔ½µµµ
 				{		
+					if(testMode==MODE_FVMI_SWEEP)
+						HAL_TIM_Base_Stop_IT(&htim3);
 					HAL_TIM_Base_Stop_IT(&htim2);
-					SetRangeRelay(pRelay->rangeNow-1, pRelay->rangeNow);
+					
+					SetRangeRelay(pRelay->rangeNow-1, pRelay->rangeNow);	//´Ë´¦ÊÇ»ºÂýÊÍ·Åµ²Î»£¬ÏÈÁ½¸ö¼ÌµçÆ÷±ÕºÏ£¬ºóÒ»¸ö¼ÌµçÆ÷¶Ï¿ª
 					pRelay->rangeNow--;
 					pRelay->rangeChangeTimes++;
-					HAL_Delay(RANGE_CHANGE_DELAY);
+					HAL_Delay(RANGE_CHANGE_DELAY*(pRelay->rangeNow));
 					return 1;
 				}
 				else																															//Èç¹ûµµÎ»ÔÚ1µµ£¬ÎÞ·¨½µµµ£¬»»µ²½áÊø
@@ -206,10 +213,14 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			{
 				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //Èç¹ûµµÎ»ÔÚ×î´óµµÒÔÏÂ£¬ÈÔÈ»¿ÉÒÔÉýµµ
 				{
+					if(testMode==MODE_FVMI_SWEEP)
+						HAL_TIM_Base_Stop_IT(&htim3);
+					HAL_TIM_Base_Stop_IT(&htim2);
+					
 					SetRangeRelay(pRelay->rangeNow+1, pRelay->rangeNow);
 					pRelay->rangeNow++;
 					pRelay->rangeChangeTimes++;
-					HAL_Delay(RANGE_CHANGE_DELAY);
+					HAL_Delay(RANGE_CHANGE_DELAY*(pRelay->rangeNow));
 					return 1;
 				}
 				else																															//Èç¹ûµµÎ»ÔÚ7µµ£¬ÎÞ·¨Éýµµ£¬»»µ²½áÊø
@@ -223,16 +234,22 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 		{
 			if((pTestResult->V_sample>0xFD00)||(pTestResult->V_sample<0x0300)) 		//Èç¹û²É¼¯µ½µÄµçÑ¹¹ý´ó
 			{
+				if(testMode==MODE_FIMV_SWEEP)
+					HAL_TIM_Base_Stop_IT(&htim3);
 				HAL_TIM_Base_Stop_IT(&htim2);
+				
 				RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_11X);		//Êµ¼ÊµçÑ¹ÊÇADCµçÑ¹µÄ11±¶
-				HAL_Delay(RANGE_CHANGE_DELAY);			
+				HAL_Delay(RANGE_CHANGE_DELAY*(pRelay->rangeNow));		
 				return 1;
 			}
 			else if((pTestResult->V_sample<0x8600)&&(pTestResult->V_sample>0x7B00))					//Èç¹û²É¼¯µ½µÄµçÁ÷¹ýÐ¡
 			{
+				if(testMode==MODE_FIMV_SWEEP)
+					HAL_TIM_Base_Stop_IT(&htim3);
 				HAL_TIM_Base_Stop_IT(&htim2);
+	
 				RelaySetInputScaling(testMode, RELAY_INPUT_SCALING_1X);		//Êµ¼ÊµçÑ¹ÊÇADCµçÑ¹µÄ1±¶
-				HAL_Delay(RANGE_CHANGE_DELAY);			
+				HAL_Delay(RANGE_CHANGE_DELAY*(pRelay->rangeNow));		
 				return 1;
 			}
 			else

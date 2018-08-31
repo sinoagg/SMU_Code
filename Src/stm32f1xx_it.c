@@ -299,6 +299,7 @@ void USART2_IRQHandler(void)
 			huart2.gState = HAL_UART_STATE_READY;
 		}
 		TxComplete=1;
+		HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);	//使能485接收
 	}
 	
 	tmp_flag = __HAL_UART_GET_FLAG(&huart2, UART_FLAG_IDLE);

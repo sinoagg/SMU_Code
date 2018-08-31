@@ -8,6 +8,8 @@
 
 #define NOTENDOFTEST	0xF2
 #define ENDOFTEST 0xF3
+#define UART_TX_LEN 20
+#define UART_RX_LEN 30		
 	
 extern uint8_t UART2_TxBuf[11];                              //向PC发送采集到的数据;
 

@@ -20,9 +20,7 @@
 #include "PC485_TX_protocol.h"
 #include "app.h"
 
-#define DEV_ADDR 0x01																									//此设备485总线地址，同总线产品地址不能相同
-#define UART_RX_LEN 30																								//上位机配置数据长度
-#define UART_TX_LEN 20	
+#define DEV_ADDR 0x01																									//此设备485总线地址，同总线产品地址不能相同	
 
 #define ID "3102002032031000001"
 //#define UNDER_DEBUG
@@ -30,6 +28,7 @@
 void OutputNextVoltage(void);
 void OutputNextCurrent(void);
 void OutputZeroVoltage(void);
+void StartNextSampling(void);
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 enum MsgType msgType=MSG_TYPE_NULL;
@@ -39,7 +38,7 @@ TestResult_TypeDef TestResult;                            	//测量结果存取
 uint8_t Uart2RxBuf[512]={0};                              	//接收PC端的设置命令和行动命令
 uint8_t Uart2TxBuf[512]={0};                              	//向PC发送采集到的数据
 uint8_t RxComplete=0;
-uint8_t TxComplete=0;
+uint8_t TxComplete=1;
 int16_t quietTimeTick=0;                      							//ADC采集状态
 uint8_t firstDataReady=0;																		//第一个数据就位，只有第一个数据就位后扫描电压才能增加，否则出现扫描电压跳过第一个点的情况
 
@@ -88,10 +87,11 @@ int main(void)
 			}
 			else if(msgType==MSG_TYPE_QUERY)												//如果是查询命令
 			{
-					if(resultNum>0)
+					if(resultNum>0&&TxComplete==1)
 					{
 						Uart2TxBuf[0]=DEV_ADDR;                        												//设备地址
 						HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);	//使能发送
+						TxComplete=0;			//表示DMA有数据在发送
 						HAL_UART_Transmit_DMA(&huart2, Uart2TxBuf, resultNum*UART_TX_LEN);		//发送所有测量值
 						resultNum=0;																													//所有结果已发送，归零
 					}
@@ -108,12 +108,7 @@ int main(void)
 			}
 			msgType=MSG_TYPE_NULL;																									//清空消息
 		}	
-
-		if(TxComplete==1)
-		{
-			TxComplete=0;
-			HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);	//使能485接收
-		}
+		
 		if(RxComplete==1)
 		{
 			HAL_UART_Receive_DMA(&huart2, Uart2RxBuf, UART_RX_LEN+1);
@@ -140,16 +135,16 @@ int main(void)
 				if(Do_Calculation(&TestPara, &TestResult, &Relay)==0)		//得到一次平均结果
 				{
 					HAL_TIM_Base_Stop_IT(&htim2);													//当前数据获取完毕，停止采样定时器
-					//只有停止采集时才响应串口中断
-					HAL_NVIC_EnableIRQ(USART1_IRQn);
 					//HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);                                     //ADC状态指示灯
 					Relay.rangeChangeTimes=0;
 					//TestResult.I_avg.numFloat=Commit_Adjustment(TestResult.I_avg.numFloat, &Relay);	//对采集到的电流进行数据处理
-					if(quietTimeTick==-1 && resultNum<10)
+					if(quietTimeTick==-1 && resultNum<10 )	
 					{
 						prepareTxData(&TestPara, &TestResult, Uart2TxBuf+resultNum*UART_TX_LEN);
 						resultNum++;
 						firstDataReady=1;
+						
+						HAL_NVIC_EnableIRQ(USART2_IRQn);//只有数据准备好后才响应串口中断
 						if(TestPara.testMode==MODE_FVMI_SWEEP)
 						{
 							OutputNextVoltage();
@@ -164,9 +159,13 @@ int main(void)
 			}
 			else
 			{
-				ADC_status=ADC_BUSY;
 				InitTestResult(&TestResult);											//换挡需要清空测量结果
-				HAL_TIM_Base_Start_IT(&htim2);
+				if(TestPara.testMode==MODE_FVMI_SWEEP||TestPara.testMode==MODE_FIMV_SWEEP)
+				{	
+					htim3.Instance->CNT=0;
+					HAL_TIM_Base_Start_IT(&htim3);
+				}	//在IV和VI模式下，如果换挡该挡位重测，不必保证时间一致
+				StartNextSampling();
 			}
 		}
 	}
@@ -182,8 +181,9 @@ void OutputZeroVoltage(void)
 
 void EnterEndofTest(void)
 {
+	HAL_NVIC_EnableIRQ(USART2_IRQn);																//允许上位机查询数据
 	HAL_TIM_Base_Stop_IT(&htim3);																		//DAC输出数据中断关闭		
-	HAL_TIM_Base_Stop_IT(&htim2);	
+	HAL_TIM_Base_Stop_IT(&htim2);		
 	TestPara.testStatus=OFF;
 	OutputVoltage(MODE_FVMI_SWEEP, 0);															//恢复到0电压初始状态
 }
@@ -192,7 +192,7 @@ void StartNextSampling(void)
 {
 	delay_us(2);											//与TIM3的开始计时时间拉开
 	htim2.Instance->CNT=0;						//计数器清零
-	HAL_NVIC_DisableIRQ(USART1_IRQn);	//采集开始后停止响应串口中断		
+	HAL_NVIC_DisableIRQ(USART2_IRQn);	//采集开始后停止响应串口中断		
 	HAL_TIM_Base_Start_IT(&htim2);		//输出一次才开始AD采集的中断
 }
 
