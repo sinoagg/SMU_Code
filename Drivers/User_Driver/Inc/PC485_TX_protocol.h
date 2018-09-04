@@ -16,7 +16,7 @@ extern uint8_t UART2_TxBuf[11];                              //ÏòPC·¢ËÍ²É¼¯µ½µÄÊ
 void PC485_TX_Message(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult, uint8_t EndOfTest);
 void PC485_Respond(void);
 void PC485_Update(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult);
-void prepareTxData(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult, uint8_t* pUartRxBuf);
+uint8_t* prepareTxData(TestPara_TypeDef* pTestPara, TestResult_TypeDef* pTestResult, uint8_t* pUartRxBuf);
 #endif
 
 

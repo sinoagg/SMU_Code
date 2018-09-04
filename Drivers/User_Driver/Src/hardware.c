@@ -254,7 +254,7 @@ void MX_TIM3_Init(uint16_t time_step)			// Uint: ms 分辨率0.1ms
 }
 
 /* TIM4 init function */									//QuietTime定时器
-void MX_TIM4_Init(void)										// unit:ms 分辨率0.1ms
+void MX_TIM4_Init(uint16_t time_step)			// unit:ms 分辨率0.1ms
 {
   TIM_ClockConfigTypeDef sClockSourceConfig;
   TIM_MasterConfigTypeDef sMasterConfig;
@@ -262,7 +262,7 @@ void MX_TIM4_Init(void)										// unit:ms 分辨率0.1ms
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 7200-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1000-1;
+  htim4.Init.Period = time_step-1;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
   {

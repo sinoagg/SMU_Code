@@ -180,11 +180,11 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 	{
 		if(testMode==MODE_FVMI_NO_SWEEP||testMode==MODE_FVMI_SWEEP) 						//如果为FVMI自动换挡模式		
 		{	
-			if((pRelay->rangeChangeTimes>9) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//如果换挡次数多于9次,将最大挡位自动降低一档
+			if((pRelay->rangeChangeTimes>10) && (pRelay->tempMaxRange>pRelay->tempMinRange))					//如果换挡次数多于9次,将最大挡位自动降低一档
 			{
+				HAL_TIM_Base_Stop_IT(&htim2);//换挡前停止定时器
 				if(testMode==MODE_FVMI_SWEEP)
 					HAL_TIM_Base_Stop_IT(&htim3);
-				HAL_TIM_Base_Stop_IT(&htim2);
 				
 				pRelay->tempMaxRange--;
 				SetRangeRelay(pRelay->tempMaxRange, pRelay->rangeNow);
@@ -196,9 +196,9 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 			{
 				if(pRelay->rangeNow>pRelay->tempMinRange)														//如果档位在1档以上，仍然可以降档
 				{		
+					HAL_TIM_Base_Stop_IT(&htim2);
 					if(testMode==MODE_FVMI_SWEEP)
 						HAL_TIM_Base_Stop_IT(&htim3);
-					HAL_TIM_Base_Stop_IT(&htim2);
 					
 					SetRangeRelay(pRelay->rangeNow-1, pRelay->rangeNow);	//此处是缓慢释放挡位，先两个继电器闭合，后一个继电器断开
 					pRelay->rangeNow--;
@@ -209,13 +209,13 @@ uint8_t RelayCheck(enum TestMode testMode, TestResult_TypeDef* pTestResult, Rela
 				else																															//如果档位在1档，无法降档，换挡结束
 					return 0;
 			}
-			else if((pTestResult->I_sample<0x8600)&&(pTestResult->I_sample>0x7B00))			//如果采集到的电流过小
+			else if((pTestResult->I_sample<0x8400)&&(pTestResult->I_sample>0x7C00))			//如果采集到的电流过小
 			{
 				if(pRelay->rangeNow<pRelay->tempMaxRange)	                      //如果档位在最大档以下，仍然可以升档
 				{
+					HAL_TIM_Base_Stop_IT(&htim2);
 					if(testMode==MODE_FVMI_SWEEP)
 						HAL_TIM_Base_Stop_IT(&htim3);
-					HAL_TIM_Base_Stop_IT(&htim2);
 					
 					SetRangeRelay(pRelay->rangeNow+1, pRelay->rangeNow);
 					pRelay->rangeNow++;

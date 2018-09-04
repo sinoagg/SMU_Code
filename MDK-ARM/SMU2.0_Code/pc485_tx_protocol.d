@@ -50,3 +50,4 @@ smu2.0_code\pc485_tx_protocol.o: ..\Drivers\User_Driver\Inc\hardware.h
 smu2.0_code\pc485_tx_protocol.o: ..\Drivers\User_Driver\Inc\AD5689R.h
 smu2.0_code\pc485_tx_protocol.o: ..\Drivers\User_Driver\Inc\para_init.h
 smu2.0_code\pc485_tx_protocol.o: ..\Drivers\User_Driver\Inc\AD8253.h
+smu2.0_code\pc485_tx_protocol.o: ..\MDK-ARM\app.h

@@ -36,7 +36,7 @@ void MX_DMA_Init(void);
 void MX_GPIO_Init(void);
 void MX_TIM2_Init(uint16_t time_step);
 void MX_TIM3_Init(uint16_t time_step);
-void MX_TIM4_Init(void)	;
+void MX_TIM4_Init(uint16_t time_step);
 
 void MX_USART1_UART_Init(void);
 void MX_USART2_UART_Init(void);
