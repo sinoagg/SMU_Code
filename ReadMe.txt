@@ -1,4 +1,4 @@
 SMU V3.00
 
-1.”√FreeRTOS÷ÿ–¥
+1.FreeRTOS on STM32F103RE
 
