@@ -39,7 +39,9 @@
 "smu2.0_code\timer_ctrl.o"
 "smu2.0_code\pc485_tx_protocol.o"
 "smu2.0_code\ad8253.o"
+"smu2.0_code\internalflash.o"
 --library_type=microlib --strict --scatter "SMU2.0_Code\SMU2.sct"
+
 --diag_suppress=L6329 --summary_stderr --info summarysizes --map --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list "SMU2.map" -o SMU2.0_Code\SMU2.0_Code

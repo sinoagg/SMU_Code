@@ -3,13 +3,13 @@ smu2.0_code\usbd_customhid.o: ../Middlewares/ST/STM32_USB_Device_Library/Class/C
 smu2.0_code\usbd_customhid.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
 smu2.0_code\usbd_customhid.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
 smu2.0_code\usbd_customhid.o: ../Inc/usbd_conf.h
-smu2.0_code\usbd_customhid.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
-smu2.0_code\usbd_customhid.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-smu2.0_code\usbd_customhid.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+smu2.0_code\usbd_customhid.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdio.h
+smu2.0_code\usbd_customhid.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdlib.h
+smu2.0_code\usbd_customhid.o: E:\software\MDK\ARM\ARMCC\bin\..\include\string.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xe.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Include/core_cm3.h
-smu2.0_code\usbd_customhid.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+smu2.0_code\usbd_customhid.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdint.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Include/core_cmInstr.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 smu2.0_code\usbd_customhid.o: ../Drivers/CMSIS/Include/core_cmFunc.h

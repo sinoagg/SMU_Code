@@ -8,13 +8,13 @@ smu2.0_code\para_init.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_def.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f1xx.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xe.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Include/core_cm3.h
-smu2.0_code\para_init.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+smu2.0_code\para_init.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdint.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Include/core_cmInstr.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Include/core_cmFunc.h
 smu2.0_code\para_init.o: ../Drivers/CMSIS/Device/ST/STM32F1xx/Include/system_stm32f1xx.h
 smu2.0_code\para_init.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h
-smu2.0_code\para_init.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+smu2.0_code\para_init.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdio.h
 smu2.0_code\para_init.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc_ex.h
 smu2.0_code\para_init.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio.h
 smu2.0_code\para_init.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio_ex.h
@@ -36,8 +36,8 @@ smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Class/Custom
 smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
 smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
 smu2.0_code\para_init.o: ../Inc/usbd_conf.h
-smu2.0_code\para_init.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
-smu2.0_code\para_init.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+smu2.0_code\para_init.o: E:\software\MDK\ARM\ARMCC\bin\..\include\stdlib.h
+smu2.0_code\para_init.o: E:\software\MDK\ARM\ARMCC\bin\..\include\string.h
 smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_def.h
 smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_core.h
 smu2.0_code\para_init.o: ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h
@@ -46,3 +46,5 @@ smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\relay.h
 smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\AD7988_1.h
 smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\common_type.h
 smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\delay.h
+smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\calculation.h
+smu2.0_code\para_init.o: ..\Drivers\User_Driver\Inc\InternalFlash.h

@@ -1,13 +1,13 @@
 #include "InternalFlash.h"
 
-void GetFlashData_Float(Float_Union_Data* pDataArray, uint32_t flash_addr, uint8_t length)
+void GetFlashData_Float(FloatUnion* pDataArray, uint32_t flash_addr, uint8_t length)
 {
 	uint8_t i;
 	uint32_t temp;
 	for(i=0;i<length;i++)
 	{
 		temp=FlashRead32bit(flash_addr);
-		Uint32to4Uint8(temp, &(pDataArray[i].number_uchar[0]));
+		Uint32to4Uint8(temp, &(pDataArray[i].numUchar[0]));
 		flash_addr+=4;
 	}
 }

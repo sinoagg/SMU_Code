@@ -96,6 +96,10 @@ int main(void)
 				HAL_Delay(10);
 				HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_RESET);
 			}
+			else if(msgType==MSG_TYPE_CALIBRATION)
+			{
+					RunCalibration(Uart2RxBuf);
+			}
 			msgType=MSG_TYPE_NULL;																									//清空消息
 		}	
 			
@@ -129,7 +133,7 @@ int main(void)
 					HAL_TIM_Base_Stop_IT(&htim2);													//当前数据获取完毕，停止采样定时器
 					HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);                                     //ADC状态指示灯
 					Relay.rangeChangeTimes=0;
-					//TestResult.I_avg.numFloat=Commit_Adjustment(TestResult.I_avg.numFloat, &Relay);	//对采集到的电流进行数据处理
+					//TestResult.I_avg.numFloat=CommitAdjustment(TestResult.I_avg.numFloat, &Relay,TestPara.V_Now);	//对采集到的电流进行数据处理
 					if(quietTimeTick==-1 && (pTxBuf-Uart2TxBuf)<500)									//一次最多传10组数据
 					{
 						pTxBuf=prepareTxData(&TestPara, &TestResult, pTxBuf);
