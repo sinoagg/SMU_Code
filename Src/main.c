@@ -113,7 +113,7 @@ int main(void)
 					Uart2TxBuf[0]=DEV_ADDR;                        												//设备地址
 					HAL_GPIO_WritePin(RS485_RE2_GPIO_Port, RS485_RE2_Pin, GPIO_PIN_SET);	//使能发送			
 					HAL_UART_Transmit_DMA(&huart2, Uart2TxBuf, pTxBuf-Uart2TxBuf);		//发送所有测量值
-					HAL_Delay(2);
+					HAL_Delay(2);  //必须延迟2ms，485发送速度慢，否则造成数据错位
 					pTxBuf=Uart2TxBuf;																												//所有结果已发送，归零
 				}
 			}	

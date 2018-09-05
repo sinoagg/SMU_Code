@@ -103,7 +103,7 @@ void GetTestPara(TestPara_TypeDef* pTestPara, Relay_TypeDef* pRelay, uint8_t* pU
 		if(pTestPara->startDelay<0) pTestPara->startDelay=0;
 		pTestPara->I_Now=pTestPara->I_Start;
 		pTestPara->V_Now=pTestPara->V_Start;
-		pRelay->rangeMode=(*(pUartRxBuf+26))>>4;
+		pTestPara->I_Unit=(*(pUartRxBuf+26))>>4;
 		pRelay->rangeMode=(*(pUartRxBuf+26))&0x0F;
 		pRelay->maxRange=*(pUartRxBuf+27);
 		pRelay->minRange=*(pUartRxBuf+28);
